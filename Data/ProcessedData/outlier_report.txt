@@ -1,0 +1,56 @@
+================================================================================
+OUTLIER DETECTION AND HANDLING REPORT
+================================================================================
+
+Method: IQR (Interquartile Range) with Capping (Winsorizing)
+Capping Strategy: 1st percentile (lower) and 99th percentile (upper)
+
+--------------------------------------------------------------------------------
+Column: Quantity
+--------------------------------------------------------------------------------
+
+IQR Method Statistics:
+  Q1 (25th percentile): 2.0000
+  Q3 (75th percentile): 12.0000
+  IQR (Q3 - Q1): 10.0000
+  Lower Bound (Q1 - 1.5*IQR): -13.0000
+  Upper Bound (Q3 + 1.5*IQR): 27.0000
+
+Outlier Detection Results:
+  Number of Outliers: 26336
+  Percentage of Outliers: 6.46%
+
+Capping Values Applied:
+  Lower Cap (1st percentile): 1.0000
+  Upper Cap (99th percentile): 144.0000
+
+Before vs After Capping:
+  Original Min: 1.0000 → New Min: 1.0000
+  Original Max: 19152.0000 → New Max: 144.0000
+
+--------------------------------------------------------------------------------
+Column: Price
+--------------------------------------------------------------------------------
+
+IQR Method Statistics:
+  Q1 (25th percentile): 1.2500
+  Q3 (75th percentile): 3.7500
+  IQR (Q3 - Q1): 2.5000
+  Lower Bound (Q1 - 1.5*IQR): -2.5000
+  Upper Bound (Q3 + 1.5*IQR): 7.5000
+
+Outlier Detection Results:
+  Number of Outliers: 32989
+  Percentage of Outliers: 8.09%
+
+Capping Values Applied:
+  Lower Cap (1st percentile): 0.2900
+  Upper Cap (99th percentile): 14.9500
+
+Before vs After Capping:
+  Original Min: 0.0010 → New Min: 0.2900
+  Original Max: 10953.5000 → New Max: 14.9500
+
+================================================================================
+END OF REPORT
+================================================================================
