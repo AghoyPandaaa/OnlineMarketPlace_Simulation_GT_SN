@@ -73,7 +73,7 @@ This Jupyter notebook provides a comprehensive, presentation-ready overview of y
 
 ### Option 1: View Only (Fastest)
 ```bash
-jupyter notebook OnlineMarketplace_Presentation.ipynb
+jupyter notebook OnlineMarketplace_Presentation2.ipynb
 ```
 - Open the notebook
 - Run ONLY the setup cell (imports)
@@ -89,7 +89,7 @@ cd ../Task3 && python GameTheorySimulation.py
 cd ../Task4 && python NetworkIntegratedSimulation.py
 
 # 2. Open notebook
-jupyter notebook OnlineMarketplace_Presentation.ipynb
+jupyter notebook OnlineMarketplace_Presentation2.ipynb
 
 # 3. Run all cells
 ```
@@ -98,10 +98,10 @@ jupyter notebook OnlineMarketplace_Presentation.ipynb
 ### Option 3: Export to PDF/HTML
 ```bash
 # Convert to PDF (requires LaTeX)
-jupyter nbconvert --to pdf OnlineMarketplace_Presentation.ipynb
+jupyter nbconvert --to pdf OnlineMarketplace_Presentation2.ipynb
 
 # Convert to HTML (no dependencies)
-jupyter nbconvert --to html OnlineMarketplace_Presentation.ipynb
+jupyter nbconvert --to html OnlineMarketplace_Presentation2.ipynb
 ```
 
 ---
