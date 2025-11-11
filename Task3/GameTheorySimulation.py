@@ -798,6 +798,463 @@ def visualize_nash_on_profit_landscape(market, seller_A, seller_B, nash_result,
     plt.close()
 
 
+# Add these functions to GameTheorySimulation.py
+
+def analyze_nash_equilibrium(market, seller_A, seller_B, nash_result, initial_state):
+    """
+    Perform comprehensive analysis of Nash equilibrium properties.
+
+    Args:
+        market: Market instance
+        seller_A: Seller A instance
+        seller_B: Seller B instance
+        nash_result: Dictionary containing Nash equilibrium results
+        initial_state: Dictionary with initial strategies and profits
+
+    Returns:
+        Dictionary with comprehensive analysis insights
+    """
+    analysis = {}
+
+    # Extract data from nash_result
+    converged = nash_result.get('converged', False)
+    iterations = nash_result.get('iterations', 0)
+    nash_equilibrium = nash_result.get('nash_equilibrium', {})
+
+    # a) Convergence Analysis
+    analysis['convergence'] = {
+        'converged': converged,
+        'iterations': iterations,
+        'speed': 'fast' if iterations < 10 else ('medium' if iterations < 30 else 'slow'),
+        'success': converged
+    }
+
+    # b) Strategy Changes
+    initial_A = initial_state.get('seller_A', {})
+    initial_B = initial_state.get('seller_B', {})
+    nash_A = nash_equilibrium.get('seller_A', {})
+    nash_B = nash_equilibrium.get('seller_B', {})
+
+    # Calculate changes for Seller A
+    price_change_A = nash_A.get('price', 0) - initial_A.get('price', 0)
+    price_pct_A = (price_change_A / initial_A.get('price', 1)) * 100 if initial_A.get('price', 0) != 0 else 0
+    ad_change_A = nash_A.get('ad', 0) - initial_A.get('ad_budget', 0)
+    initial_ad_A = initial_A.get('ad_budget', 0)
+    ad_pct_A = (ad_change_A / initial_ad_A) * 100 if initial_ad_A != 0 else (100 if ad_change_A > 0 else 0)
+
+    # Calculate changes for Seller B
+    price_change_B = nash_B.get('price', 0) - initial_B.get('price', 0)
+    price_pct_B = (price_change_B / initial_B.get('price', 1)) * 100 if initial_B.get('price', 0) != 0 else 0
+    ad_change_B = nash_B.get('ad', 0) - initial_B.get('ad_budget', 0)
+    initial_ad_B = initial_B.get('ad_budget', 0)
+    ad_pct_B = (ad_change_B / initial_ad_B) * 100 if initial_ad_B != 0 else (100 if ad_change_B > 0 else 0)
+
+    total_change_A = abs(price_pct_A) + abs(ad_pct_A)
+    total_change_B = abs(price_pct_B) + abs(ad_pct_B)
+
+    analysis['strategy_changes'] = {
+        'seller_A': {
+            'price_change': price_change_A,
+            'price_pct_change': price_pct_A,
+            'ad_change': ad_change_A,
+            'ad_pct_change': ad_pct_A,
+            'total_change_magnitude': total_change_A
+        },
+        'seller_B': {
+            'price_change': price_change_B,
+            'price_pct_change': price_pct_B,
+            'ad_change': ad_change_B,
+            'ad_pct_change': ad_pct_B,
+            'total_change_magnitude': total_change_B
+        },
+        'bigger_mover': 'seller_A' if total_change_A > total_change_B else 'seller_B'
+    }
+
+    # c) Profit Analysis
+    initial_profit_A = initial_state.get('profits', {}).get('seller_A', 0)
+    initial_profit_B = initial_state.get('profits', {}).get('seller_B', 0)
+    nash_profit_A = nash_A.get('profit', 0)
+    nash_profit_B = nash_B.get('profit', 0)
+
+    profit_change_A = nash_profit_A - initial_profit_A
+    profit_pct_A = (profit_change_A / abs(initial_profit_A)) * 100 if initial_profit_A != 0 else 0
+    profit_change_B = nash_profit_B - initial_profit_B
+    profit_pct_B = (profit_change_B / abs(initial_profit_B)) * 100 if initial_profit_B != 0 else 0
+
+    total_profit_initial = initial_profit_A + initial_profit_B
+    total_profit_nash = nash_profit_A + nash_profit_B
+    total_profit_change = total_profit_nash - total_profit_initial
+
+    analysis['profit_analysis'] = {
+        'seller_A': {
+            'initial_profit': initial_profit_A,
+            'nash_profit': nash_profit_A,
+            'change': profit_change_A,
+            'pct_change': profit_pct_A,
+            'is_positive': nash_profit_A > 0
+        },
+        'seller_B': {
+            'initial_profit': initial_profit_B,
+            'nash_profit': nash_profit_B,
+            'change': profit_change_B,
+            'pct_change': profit_pct_B,
+            'is_positive': nash_profit_B > 0
+        },
+        'winner': 'seller_A' if profit_change_A > profit_change_B else 'seller_B',
+        'total_market': {
+            'initial': total_profit_initial,
+            'nash': total_profit_nash,
+            'change': total_profit_change
+        },
+        'both_sustainable': nash_profit_A > 0 and nash_profit_B > 0
+    }
+
+    # d) Market Dynamics
+    price_gap = nash_A.get('price', 0) - nash_B.get('price', 0)
+    ad_gap = nash_A.get('ad', 0) - nash_B.get('ad', 0)
+
+    analysis['market_dynamics'] = {
+        'price_gap': price_gap,
+        'premium_seller': 'seller_A' if price_gap > 0 else 'seller_B',
+        'discount_seller': 'seller_B' if price_gap > 0 else 'seller_A',
+        'ad_gap': ad_gap,
+        'higher_ad_spender': 'seller_A' if ad_gap > 0 else 'seller_B',
+        'market_stable': nash_profit_A > 0 and nash_profit_B > 0,
+        'price_competition_intensity': 'high' if abs(price_gap) < 5 else ('medium' if abs(price_gap) < 15 else 'low')
+    }
+
+    # e) Theoretical Insights
+    analysis['theoretical_insights'] = {
+        'is_best_response': converged,  # If algorithm converged, it's a mutual best response
+        'equilibrium_type': 'Nash equilibrium' if converged else 'Non-equilibrium',
+        'cooperative_potential': total_profit_nash < total_profit_initial * 1.1,  # Could cooperate for better outcome
+        'competitive_pressure': abs(price_gap) / max(nash_A.get('price', 1), nash_B.get('price', 1)) < 0.1
+    }
+
+    return analysis
+
+
+def generate_nash_report(analysis_dict, nash_result, output_path='nash_equilibrium_report.txt'):
+    """
+    Generate human-readable text report from analysis.
+
+    Args:
+        analysis_dict: Analysis dictionary from analyze_nash_equilibrium()
+        nash_result: Original Nash equilibrium result
+        output_path: Path to save the report
+    """
+    report_lines = []
+
+    # Header
+    report_lines.append("=" * 80)
+    report_lines.append("NASH EQUILIBRIUM ANALYSIS REPORT")
+    report_lines.append("=" * 80)
+    report_lines.append("")
+
+    # 1. Convergence Summary
+    report_lines.append("1. CONVERGENCE SUMMARY")
+    report_lines.append("-" * 80)
+    conv = analysis_dict['convergence']
+    report_lines.append(f"Algorithm converged: {'Yes' if conv['converged'] else 'No'}")
+    report_lines.append(f"Iterations required: {conv['iterations']}")
+    report_lines.append(f"Convergence speed: {conv['speed'].capitalize()}")
+    report_lines.append("")
+
+    # 2. Nash Equilibrium Strategies
+    report_lines.append("2. NASH EQUILIBRIUM STRATEGIES")
+    report_lines.append("-" * 80)
+
+    nash_equilibrium = nash_result.get('nash_equilibrium', {})
+    changes = analysis_dict['strategy_changes']
+    profits = analysis_dict['profit_analysis']
+
+    # Seller A
+    report_lines.append("Seller A:")
+    nash_A = nash_equilibrium.get('seller_A', {})
+    change_A = changes['seller_A']
+    profit_A = profits['seller_A']
+
+    report_lines.append(f"  Price: £{nash_A.get('price', 0):.2f} "
+                       f"(change: {change_A['price_pct_change']:+.1f}% from initial)")
+    report_lines.append(f"  Ad Budget: £{nash_A.get('ad', 0):.2f} "
+                       f"(change: {change_A['ad_pct_change']:+.1f}% from initial)")
+    report_lines.append(f"  Profit: £{profit_A['nash_profit']:.2f} "
+                       f"(change: {profit_A['pct_change']:+.1f}% from initial)")
+    report_lines.append("")
+
+    # Seller B
+    report_lines.append("Seller B:")
+    nash_B = nash_equilibrium.get('seller_B', {})
+    change_B = changes['seller_B']
+    profit_B = profits['seller_B']
+
+    report_lines.append(f"  Price: £{nash_B.get('price', 0):.2f} "
+                       f"(change: {change_B['price_pct_change']:+.1f}% from initial)")
+    report_lines.append(f"  Ad Budget: £{nash_B.get('ad', 0):.2f} "
+                       f"(change: {change_B['ad_pct_change']:+.1f}% from initial)")
+    report_lines.append(f"  Profit: £{profit_B['nash_profit']:.2f} "
+                       f"(change: {profit_B['pct_change']:+.1f}% from initial)")
+    report_lines.append("")
+
+    # 3. Market Dynamics
+    report_lines.append("3. MARKET DYNAMICS AT EQUILIBRIUM")
+    report_lines.append("-" * 80)
+    dynamics = analysis_dict['market_dynamics']
+
+    price_diff = dynamics['price_gap']
+    premium = dynamics['premium_seller'].replace('seller_', 'Seller ')
+    discount = dynamics['discount_seller'].replace('seller_', 'Seller ')
+
+    report_lines.append(f"Price difference: £{abs(price_diff):.2f} ({premium} is Premium)")
+    report_lines.append(f"Ad budget difference: £{abs(dynamics['ad_gap']):.2f} "
+                       f"({dynamics['higher_ad_spender'].replace('seller_', 'Seller ')} spends more)")
+    report_lines.append(f"Total market profit: £{profits['total_market']['nash']:.2f}")
+    report_lines.append(f"Market stability: {'Stable' if dynamics['market_stable'] else 'Unstable'} "
+                       f"({'both profitable' if profits['both_sustainable'] else 'at least one seller unprofitable'})")
+    report_lines.append("")
+
+    # 4. Key Insights
+    report_lines.append("4. KEY INSIGHTS")
+    report_lines.append("-" * 80)
+
+    insights = []
+
+    # Insight about profit winner
+    winner = profits['winner'].replace('seller_', 'Seller ')
+    winner_change = profits[profits['winner']]['pct_change']
+    if winner_change > 0:
+        insights.append(f"{winner} improved profit by {abs(winner_change):.1f}% at Nash equilibrium")
+    else:
+        insights.append(f"{winner} had better profit performance (smaller loss) at Nash equilibrium")
+
+    # Insight about convergence
+    if conv['speed'] == 'fast':
+        insights.append(f"Equilibrium reached quickly ({conv['iterations']} iterations)")
+    elif conv['speed'] == 'medium':
+        insights.append(f"Equilibrium reached at moderate pace ({conv['iterations']} iterations)")
+    else:
+        insights.append(f"Equilibrium took longer to reach ({conv['iterations']} iterations)")
+
+    # Insight about price competition
+    if dynamics['price_competition_intensity'] == 'high':
+        insights.append("Price gap narrowed significantly, indicating intense price competition")
+    elif dynamics['price_competition_intensity'] == 'medium':
+        insights.append("Moderate price differentiation maintained at equilibrium")
+    else:
+        insights.append("Sellers maintained significant price differentiation")
+
+    # Insight about advertising
+    if change_A['ad_pct_change'] < 0 and change_B['ad_pct_change'] < 0:
+        insights.append("Both sellers reduced ad spending in equilibrium (cost optimization)")
+    elif change_A['ad_pct_change'] > 0 and change_B['ad_pct_change'] > 0:
+        insights.append("Both sellers increased ad spending (escalating ad competition)")
+    else:
+        insights.append("Asymmetric advertising strategies emerged at equilibrium")
+
+    # Insight about stability
+    if profits['both_sustainable']:
+        insights.append("Nash equilibrium is stable with positive profits for both sellers")
+    else:
+        insights.append("Market sustainability concern: at least one seller has negative profits")
+
+    # Insight about strategy changes
+    bigger_mover = changes['bigger_mover'].replace('seller_', 'Seller ')
+    insights.append(f"{bigger_mover} made larger strategic adjustments to reach equilibrium")
+
+    for i, insight in enumerate(insights, 1):
+        report_lines.append(f"  {i}. {insight}")
+    report_lines.append("")
+
+    # 5. Game Theory Validation (placeholder - will be filled by verify_nash_property)
+    report_lines.append("5. GAME THEORY VALIDATION")
+    report_lines.append("-" * 80)
+    report_lines.append("Nash property verification: [To be completed by verify_nash_property()]")
+    report_lines.append("")
+
+    report_lines.append("=" * 80)
+
+    # Write to file
+    report_text = '\n'.join(report_lines)
+    with open(output_path, 'w') as f:
+        f.write(report_text)
+
+    # Also print to console
+    print(report_text)
+
+    return report_text
+
+
+def verify_nash_property(market, seller_A, seller_B, nash_result, deviation_size=0.05):
+    """
+    Verify that Nash equilibrium truly is an equilibrium:
+    Neither seller can improve by deviating.
+
+    Args:
+        market: Market instance
+        seller_A: Seller A instance
+        seller_B: Seller B instance
+        nash_result: Dictionary containing Nash equilibrium results
+        deviation_size: Size of deviation to test (default 5%)
+
+    Returns:
+        Dictionary with verification results
+    """
+    nash_equilibrium = nash_result.get('nash_equilibrium', {})
+
+    nash_A = nash_equilibrium.get('seller_A', {})
+    nash_B = nash_equilibrium.get('seller_B', {})
+    base_profit_A = nash_A.get('profit', 0)
+    base_profit_B = nash_B.get('profit', 0)
+
+    deviations_tested = []
+    is_nash = True
+
+    # Test deviations for Seller A
+    test_scenarios_A = [
+        ('price_increase', nash_A['price'] * (1 + deviation_size), nash_A['ad']),
+        ('price_decrease', nash_A['price'] * (1 - deviation_size), nash_A['ad']),
+        ('ad_increase', nash_A['price'], nash_A['ad'] * (1 + deviation_size)),
+        ('ad_decrease', nash_A['price'], max(0, nash_A['ad'] * (1 - deviation_size)))
+    ]
+
+    for scenario_name, test_price, test_ad in test_scenarios_A:
+        # Set test strategy for A
+        seller_A.update_strategy(test_price, test_ad)
+        seller_B.update_strategy(nash_B['price'], nash_B['ad'])
+
+        # Calculate profit with this test strategy
+        test_profit_A = market.calculate_profit(seller_A, seller_B)
+
+        profit_improvement = test_profit_A - base_profit_A
+
+        deviations_tested.append({
+            'seller': 'A',
+            'deviation': scenario_name,
+            'test_price': test_price,
+            'test_ad': test_ad,
+            'base_profit': base_profit_A,
+            'test_profit': test_profit_A,
+            'improvement': profit_improvement,
+            'profitable': profit_improvement > 0.01  # Small threshold for numerical stability
+        })
+
+        if profit_improvement > 0.01:
+            is_nash = False
+
+    # Test deviations for Seller B
+    test_scenarios_B = [
+        ('price_increase', nash_B['price'] * (1 + deviation_size), nash_B['ad']),
+        ('price_decrease', nash_B['price'] * (1 - deviation_size), nash_B['ad']),
+        ('ad_increase', nash_B['price'], nash_B['ad'] * (1 + deviation_size)),
+        ('ad_decrease', nash_B['price'], max(0, nash_B['ad'] * (1 - deviation_size)))
+    ]
+
+    for scenario_name, test_price, test_ad in test_scenarios_B:
+        # Set test strategy for B
+        seller_A.update_strategy(nash_A['price'], nash_A['ad'])
+        seller_B.update_strategy(test_price, test_ad)
+
+        # Calculate profit with this test strategy
+        test_profit_B = market.calculate_profit(seller_B, seller_A)
+
+        profit_improvement = test_profit_B - base_profit_B
+
+        deviations_tested.append({
+            'seller': 'B',
+            'deviation': scenario_name,
+            'test_price': test_price,
+            'test_ad': test_ad,
+            'base_profit': base_profit_B,
+            'test_profit': test_profit_B,
+            'improvement': profit_improvement,
+            'profitable': profit_improvement > 0.01
+        })
+
+        if profit_improvement > 0.01:
+            is_nash = False
+
+    # Reset to Nash strategies
+    seller_A.update_strategy(nash_A['price'], nash_A['ad'])
+    seller_B.update_strategy(nash_B['price'], nash_B['ad'])
+
+    verification_result = {
+        'is_nash_equilibrium': is_nash,
+        'deviations_tested': deviations_tested,
+        'num_tests': len(deviations_tested),
+        'profitable_deviations_found': sum(1 for d in deviations_tested if d['profitable'])
+    }
+
+    return verification_result
+
+
+def execute_complete_nash_analysis(market, seller_A, seller_B, nash_result, initial_state):
+    """
+    Execute complete Nash equilibrium analysis pipeline.
+
+    Args:
+        market: Market instance
+        seller_A: Seller A instance
+        seller_B: Seller B instance
+        nash_result: Nash equilibrium computation result
+        initial_state: Initial strategies and profits
+
+    Returns:
+        Dictionary containing all analysis results
+    """
+    print("\n" + "=" * 80)
+    print("EXECUTING COMPREHENSIVE NASH EQUILIBRIUM ANALYSIS")
+    print("=" * 80 + "\n")
+
+    # Step 1: Analyze Nash equilibrium
+    print("Step 1: Analyzing Nash equilibrium properties...")
+    analysis = analyze_nash_equilibrium(market, seller_A, seller_B, nash_result, initial_state)
+    print("✓ Analysis complete\n")
+
+    # Step 2: Verify Nash property
+    print("Step 2: Verifying Nash equilibrium property...")
+    verification = verify_nash_property(market, seller_A, seller_B, nash_result)
+    print(f"✓ Verification complete: {'VERIFIED' if verification['is_nash_equilibrium'] else 'NOT VERIFIED'}\n")
+
+    # Step 3: Generate report
+    print("Step 3: Generating detailed report...")
+    report_text = generate_nash_report(analysis, nash_result)
+
+    # Append verification results to report
+    with open('nash_equilibrium_report.txt', 'a') as f:
+        f.write("\n\n")
+        f.write("NASH PROPERTY VERIFICATION RESULTS\n")
+        f.write("-" * 80 + "\n")
+        f.write(f"Result: Nash equilibrium {'VERIFIED' if verification['is_nash_equilibrium'] else 'NOT VERIFIED'}\n")
+        f.write(f"Tests performed: {verification['num_tests']}\n")
+        f.write(f"Profitable deviations found: {verification['profitable_deviations_found']}\n\n")
+
+        if verification['profitable_deviations_found'] > 0:
+            f.write("Profitable deviations detected:\n")
+            for dev in verification['deviations_tested']:
+                if dev['profitable']:
+                    f.write(f"  - Seller {dev['seller']}: {dev['deviation']} "
+                           f"(profit improvement: £{dev['improvement']:.2f})\n")
+        else:
+            f.write("No profitable unilateral deviations found. Nash equilibrium confirmed.\n")
+
+    print("✓ Report saved to 'nash_equilibrium_report.txt'\n")
+
+    # Step 4: Print key findings
+    print("=" * 80)
+    print("KEY FINDINGS SUMMARY")
+    print("=" * 80)
+    print(f"Convergence: {analysis['convergence']['speed'].upper()} "
+          f"({analysis['convergence']['iterations']} iterations)")
+    print(f"Nash Equilibrium Status: {'VERIFIED ✓' if verification['is_nash_equilibrium'] else 'NOT VERIFIED ✗'}")
+    print(f"Market Stability: {'STABLE' if analysis['market_dynamics']['market_stable'] else 'UNSTABLE'}")
+    print(f"Profit Winner: {analysis['profit_analysis']['winner'].replace('seller_', 'Seller ')}")
+    print("=" * 80 + "\n")
+
+    return {
+        'analysis': analysis,
+        'verification': verification,
+        'report_path': 'nash_equilibrium_report.txt'
+    }
 
 # ============================================================================
 # MAIN EXECUTION
@@ -999,4 +1456,26 @@ if __name__ == "__main__":
     print("  ✓ profit_comparison.png - Initial vs Nash profit comparison")
     print("  ✓ nash_on_landscape.png - Nash point on profit landscapes")
     print("="*80 + "\n")
+    initial_state = {
+        'seller_A': {
+            'price': seller_A.price,
+            'ad_budget': seller_A.advertising_budget
+        },
+        'seller_B': {
+            'price': seller_B.price,
+            'ad_budget': seller_B.advertising_budget
+        },
+        'profits': {
+            'seller_A': seller_A.profit,
+            'seller_B': seller_B.profit
+        }
+    }
+
+    # Compute Nash equilibrium
+    nash_result = find_nash_equilibrium(market, seller_A, seller_B)
+
+    # Execute complete analysis
+    complete_results = execute_complete_nash_analysis(
+        market, seller_A, seller_B, nash_result, initial_state
+    )
 

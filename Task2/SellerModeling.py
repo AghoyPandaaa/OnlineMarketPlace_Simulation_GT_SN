@@ -449,24 +449,49 @@ class MarketModel:
     This class implements the market demand function and calculates profits
     for sellers competing on price and advertising.
 
-    DEMAND FUNCTION:
-        D_i = base_demand + (α × m_i) + (β × (p_j - p_i)) + (γ × influence_score_i)
+    DEMAND FUNCTION (UPDATED WITH ABSOLUTE PRICE ELASTICITY):
+        D_i = base_demand × (1 - ε × price_markup_i) + (α × m_i) + (β × (p_j - p_i)) + (γ × influence_score_i)
 
     Where:
         D_i: Demand for seller i (units)
         base_demand: Natural demand without any competitive effects
+        price_markup_i: (price_i - cost_i) / cost_i (how much above cost, as percentage)
+
+        ε (epsilon): Absolute price elasticity coefficient
+            - How much demand decreases as price increases above cost
+            - Example: ε = 0.5 means 100% markup (2x cost) → 50% demand reduction
+            - DEFAULT: 0.5 (50% reduction per 100% markup)
+            - This fixes the corner solution problem by penalizing high absolute prices!
 
         α (alpha): Advertising effectiveness coefficient
             - How many additional units sold per €1 spent on advertising
             - Example: α = 0.01 means €100 advertising → +1 unit demand
 
-        β (beta): Price sensitivity coefficient
+        β (beta): Price sensitivity coefficient (RELATIVE prices)
             - How demand shifts based on price differences with competitors
             - Example: β = 5.0 means if competitor charges €1 more → +5 units demand
 
         γ (gamma): Social influence coefficient (for Task IV - network effects)
             - How social network influence affects demand
             - Default 0.0 for Tasks II & III (no social network)
+
+    EXAMPLE - Absolute Price Elasticity Impact:
+        Seller: cost = €10, base_demand = 100 units, ε = 0.5
+
+        Price = €15 (50% markup):
+            price_markup = (15 - 10) / 10 = 0.5
+            reduction = 0.5 × 0.5 = 0.25 (25%)
+            adjusted_base = 100 × (1 - 0.25) = 75 units
+
+        Price = €20 (100% markup):
+            price_markup = (20 - 10) / 10 = 1.0
+            reduction = 0.5 × 1.0 = 0.5 (50%)
+            adjusted_base = 100 × (1 - 0.5) = 50 units
+
+        Price = €30 (200% markup):
+            price_markup = (30 - 10) / 10 = 2.0
+            reduction = 0.5 × 2.0 = 1.0 (100%)
+            adjusted_base = 100 × max(0, 1 - 1.0) = 0 units (too expensive!)
 
     PROFIT FUNCTION:
         Profit_i = (price_i - cost_i) × demand_i - ad_budget_i
@@ -480,23 +505,33 @@ class MarketModel:
         alpha (float): Advertising effectiveness coefficient
         beta (float): Price sensitivity coefficient
         gamma (float): Social influence coefficient
+        epsilon (float): Absolute price elasticity coefficient (NEW!)
     """
 
 
-    def __init__(self, sellers_dict, alpha=0.01, beta=5.0, gamma=0.0,total_market_size=0):
+    def __init__(self, sellers_dict, alpha=0.01, beta=5.0, gamma=0.0, epsilon=0.5, total_market_size=0):
         """
         Initialize the market model.
 
         Args:
             sellers_dict (dict): Dictionary of {name: Seller object}
             alpha (float): Advertising effectiveness (default 0.01)
-            beta (float): Price sensitivity (default 5.0)
+                How many units of demand per €1 of advertising
+            beta (float): Price sensitivity - RELATIVE (default 5.0)
+                How demand shifts per €1 price difference vs competitor
             gamma (float): Social influence coefficient (default 0.0)
+                Network effects (used in Task IV)
+            epsilon (float): Absolute price elasticity (default 0.5) **NEW**
+                How much demand decreases per 100% price markup above cost
+                Example: epsilon=0.5 means 100% markup → 50% demand reduction
+                This prevents corner solutions by penalizing high absolute prices!
+            total_market_size (int): Total market size in customers (default 0)
         """
         self.sellers = sellers_dict
         self.alpha = alpha
         self.beta = beta
         self.gamma = gamma
+        self.epsilon = epsilon  # NEW: Absolute price elasticity
         self.total_market_size = total_market_size
 
         print(f"\n{'='*80}")
@@ -505,8 +540,11 @@ class MarketModel:
         print(f"Number of sellers: {len(self.sellers)}")
         print(f"Alpha (advertising effectiveness): {self.alpha}")
         print(f"  → Each €1 advertising increases demand by {self.alpha} units")
-        print(f"Beta (price sensitivity): {self.beta}")
+        print(f"Beta (price sensitivity - RELATIVE): {self.beta}")
         print(f"  → Each €1 price advantage vs competitor increases demand by {self.beta} units")
+        print(f"Epsilon (price elasticity - ABSOLUTE): {self.epsilon} **NEW**")
+        print(f"  → Each 100% price markup reduces base demand by {self.epsilon*100:.0f}%")
+        print(f"  → This prevents sellers from charging infinitely high prices!")
         print(f"Gamma (social influence): {self.gamma}")
         print(f"  → Currently {self.gamma} (no social network effects)")
         print(f"{'='*80}\n")
@@ -515,11 +553,27 @@ class MarketModel:
         """
         Calculate demand for seller i given competitor j's actions.
 
-        DEMAND EQUATION BREAKDOWN:
-        1. base_demand: Natural baseline demand
+        UPDATED DEMAND EQUATION WITH ABSOLUTE PRICE ELASTICITY:
+        D_i = base_demand × (1 - ε × price_markup) + (α × m_i) + (β × (p_j - p_i)) + (γ × influence)
+
+        COMPONENTS:
+        1. base_demand × (1 - ε × price_markup): Base demand reduced by absolute price level
+           - price_markup = (price - cost) / cost
+           - Higher prices above cost → lower base demand
+           - THIS IS THE FIX for corner solutions!
+
         2. α × m_i: Additional demand from advertising
-        3. β × (p_j - p_i): Demand gain/loss from price competition
+
+        3. β × (p_j - p_i): Demand gain/loss from RELATIVE price competition
+
         4. γ × influence_score: Demand from social influence (Task IV)
+
+        EXAMPLE:
+            seller_i: cost=€10, price=€20, base_demand=100
+            price_markup = (20-10)/10 = 1.0 (100% markup)
+            ε = 0.5
+            base_with_elasticity = 100 × (1 - 0.5 × 1.0) = 50 units
+            → Charging 2x cost reduces base demand by 50%!
 
         Args:
             seller_i (Seller): The seller whose demand we're calculating
@@ -529,24 +583,31 @@ class MarketModel:
         Returns:
             float: Calculated demand (units), always >= 0
         """
-        # Component 1: Base demand (natural demand without any effects)
-        base = seller_i.base_demand
+        # Component 1: Base demand with ABSOLUTE PRICE ELASTICITY (NEW!)
+        # Calculate how much price is above cost (as percentage)
+        price_markup = (seller_i.price - seller_i.production_cost) / seller_i.production_cost
+
+        # Apply elasticity: higher markup → lower base demand
+        # The (1 - ε × markup) factor reduces demand as price increases
+        # Cap reduction at 100% (demand can't go below 0 from this component)
+        elasticity_factor = max(0, 1 - self.epsilon * price_markup)
+        base_with_elasticity = seller_i.base_demand * elasticity_factor
 
         # Component 2: Advertising effect (α × m_i)
-        # More advertising → more demand
+        # More advertising → more demand (unchanged)
         advertising_effect = self.alpha * seller_i.ad_budget
 
-        # Component 3: Price competition effect (β × (p_j - p_i))
+        # Component 3: RELATIVE price competition effect (β × (p_j - p_i))
         # If competitor charges more → we get more demand
-        # If we charge more → we lose demand
+        # If we charge more → we lose demand (unchanged)
         price_competition_effect = self.beta * (seller_j.price - seller_i.price)
 
         # Component 4: Social influence (γ × influence_score)
-        # Network effects from social connections (used in Task IV)
+        # Network effects from social connections (used in Task IV, unchanged)
         social_influence_effect = self.gamma * influence_score_i
 
-        # Total demand
-        demand = base + advertising_effect + price_competition_effect + social_influence_effect
+        # Total demand: now base demand is adjusted by absolute price!
+        demand = base_with_elasticity + advertising_effect + price_competition_effect + social_influence_effect
 
         # Ensure demand is never negative (economic constraint)
         demand = max(0, demand)

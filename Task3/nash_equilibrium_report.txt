@@ -1,0 +1,59 @@
+================================================================================
+NASH EQUILIBRIUM ANALYSIS REPORT
+================================================================================
+
+1. CONVERGENCE SUMMARY
+--------------------------------------------------------------------------------
+Algorithm converged: Yes
+Iterations required: 2
+Convergence speed: Fast
+
+2. NASH EQUILIBRIUM STRATEGIES
+--------------------------------------------------------------------------------
+Seller A:
+  Price: £7.21 (change: +0.1% from initial)
+  Ad Budget: £0.00 (change: +0.0% from initial)
+  Profit: £-9381.94 (change: +3.0% from initial)
+
+Seller B:
+  Price: £7.21 (change: +0.1% from initial)
+  Ad Budget: £0.00 (change: +0.0% from initial)
+  Profit: £-4717.96 (change: +2.8% from initial)
+
+3. MARKET DYNAMICS AT EQUILIBRIUM
+--------------------------------------------------------------------------------
+Price difference: £0.00 (Seller B is Premium)
+Ad budget difference: £0.00 (Seller B spends more)
+Total market profit: £-14099.90
+Market stability: Unstable (at least one seller unprofitable)
+
+4. KEY INSIGHTS
+--------------------------------------------------------------------------------
+  1. Seller A improved profit by 3.0% at Nash equilibrium
+  2. Equilibrium reached quickly (2 iterations)
+  3. Price gap narrowed significantly, indicating intense price competition
+  4. Asymmetric advertising strategies emerged at equilibrium
+  5. Market sustainability concern: at least one seller has negative profits
+  6. Seller B made larger strategic adjustments to reach equilibrium
+
+5. GAME THEORY VALIDATION
+--------------------------------------------------------------------------------
+Nash property verification: [To be completed by verify_nash_property()]
+
+================================================================================
+
+NASH PROPERTY VERIFICATION RESULTS
+--------------------------------------------------------------------------------
+Result: Nash equilibrium NOT VERIFIED
+Tests performed: 8
+Profitable deviations found: 8
+
+Profitable deviations detected:
+  - Seller A: price_increase (profit improvement: £9381.94)
+  - Seller A: price_decrease (profit improvement: £9391.68)
+  - Seller A: ad_increase (profit improvement: £9381.94)
+  - Seller A: ad_decrease (profit improvement: £9381.94)
+  - Seller B: price_increase (profit improvement: £4717.96)
+  - Seller B: price_decrease (profit improvement: £4727.70)
+  - Seller B: ad_increase (profit improvement: £4717.96)
+  - Seller B: ad_decrease (profit improvement: £4717.96)
