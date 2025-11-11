@@ -7,7 +7,8 @@
 
 \title{Market Dynamics and Social Networks in Online Retail:\\
 An Integrated Nash Equilibrium Analysis}
-\author{Saeed Pakniat | 40139537}
+\author{Saeed Pakniat | 40139537\\
+\small GitHub Repository: \url{https://github.com/AghoyPandaaa/OnlineMarketPlace_Simulation_GT_SN.git}}
 \date{\today}
 
 \begin{document}
@@ -30,6 +31,12 @@ This report presents an integrated simulation study of price competition and soc
     \item Dataset summary: e.g., 407,664 rows, 9 columns. (Add table if wanted!)
 \end{itemize}
 
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{../Task1/Task1_EDA_Results.png}
+\caption{Exploratory Data Analysis: Distribution of key variables and outlier handling results.}
+\end{figure}
+
 \section{Seller Modeling}
 \begin{itemize}
     \item Product selection criteria: chose top-selling products with price variation.
@@ -50,6 +57,12 @@ Seller C & €2.95–€3.24 & €2.95 & 7     &  €50,066 \\
 \end{tabular}
 \caption{Key metrics for each seller segment.}
 \end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{../Task2/seller_analysis.png}
+\caption{Seller comparison: Average prices, total quantities, revenues, and price distributions.}
+\end{figure}
 
 \section{Market Model and Equilibrium Simulation}
 \begin{itemize}
@@ -72,8 +85,20 @@ Seller C & €2.95–€3.24 & €2.95 & 7     &  €50,066 \\
 % Insert Figure Here (profit landscape, parameter sensitivity)
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.7\textwidth]{Task3.profit_landscape.png}
+\includegraphics[width=0.85\textwidth]{../Task3/profit_landscape.png}
 \caption{Profit landscape for Seller A given competitor's fixed strategy.}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{../Task3/nash_equilibrium.png}
+\caption{Nash equilibrium convergence: Price, ad budget, profit evolution and strategy trajectories.}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.75\textwidth]{../Task3/parameter_sensitivity.png}
+\caption{Parameter sensitivity analysis showing impact of advertising effectiveness ($\alpha$) and price sensitivity ($\beta$) on profits.}
 \end{figure}
 
 \section{Social Network Analysis}
@@ -83,6 +108,12 @@ Seller C & €2.95–€3.24 & €2.95 & 7     &  €50,066 \\
     \item Insert summary and network visualization if available.
 \end{itemize}
 
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.75\textwidth]{../Task4/social_network.png}
+\caption{Customer social network visualization showing influence connections and community structure.}
+\end{figure}
+
 \section{Integrated Simulation: Nash Equilibrium with Network Effects}
 \begin{itemize}
     \item Compared equilibrium with $\gamma=0$ and with $\gamma=2.0$ (network influence).
@@ -91,7 +122,7 @@ Seller C & €2.95–€3.24 & €2.95 & 7     &  €50,066 \\
 % Insert Final Comparison Figure Here
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.8\textwidth]{Task4/network_impact_comparison.png}
+\includegraphics[width=0.8\textwidth]{../Task4/network_impact_comparison.png}
 \caption{Effect of social networks on Nash equilibrium profits and strategies.}
 \end{figure}
 
