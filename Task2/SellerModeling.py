@@ -39,7 +39,7 @@ print(products_with_variation.head(20)[['StockCode', 'Description', 'Min_Price',
 
 # 3. Select ONE popular product for simulation
 print("\n[3] Selecting product for seller simulation...")
-selected_product = products_with_variation.iloc[0]
+selected_product = products_with_variation.iloc[1]
 selected_stock_code = selected_product['StockCode']
 
 # Extract all transactions for this product
@@ -66,9 +66,9 @@ print(f"67th Percentile Price: ${q67:.2f}")
 
 # Assign sellers based on price tiers
 def assign_seller(price):
-    if price <= q33:
+    if price <= selected_product_data['Price'].quantile(0.30):
         return 'Seller_A'
-    elif price <= q67:
+    elif price <= selected_product_data['Price'].quantile(0.60):
         return 'Seller_B'
     else:
         return 'Seller_C'
@@ -627,7 +627,6 @@ elif len(sellers) == 3:
 
 # Print formatted market state
 market.print_market_state()
-
 # Get summary DataFrame
 market_summary_df = market.get_market_summary()
 print("Market Summary DataFrame:")
@@ -635,3 +634,602 @@ print(market_summary_df.to_string(index=False))
 
 print("\n✓ Object-oriented seller and market models initialized successfully!")
 
+# ==================================================================================
+# PROFIT LANDSCAPE VISUALIZATION
+# ==================================================================================
+
+print("\n" + "="*80)
+print("CREATING PROFIT LANDSCAPE VISUALIZATIONS")
+print("="*80)
+
+
+def calculate_profit_landscape(market, seller_i, seller_j,
+                                price_range, ad_range,
+                                competitor_fixed_price, competitor_fixed_ad):
+    """
+    Calculate profit for seller_i across different price and ad budget combinations
+    while competitor (seller_j) keeps fixed strategies.
+
+    This function creates a 2D grid showing how seller_i's profit varies across
+    all possible combinations of their price and advertising budget decisions,
+    assuming the competitor maintains fixed strategies.
+
+    Economic Interpretation:
+    - Each cell in the grid represents a strategic choice (price, ad_budget)
+    - The value is the resulting profit given competitor's fixed strategy
+    - The optimal point is the Nash equilibrium response to competitor's strategy
+
+    Parameters:
+        market (MarketModel): The market model with demand/profit functions
+        seller_i (Seller): Seller object to analyze
+        seller_j (Seller): Competitor Seller object (kept fixed)
+        price_range (np.array): Array of prices to test
+        ad_range (np.array): Array of ad budgets to test
+        competitor_fixed_price (float): Competitor's fixed price
+        competitor_fixed_ad (float): Competitor's fixed ad budget
+
+    Returns:
+        np.array: 2D profit grid [len(ad_range), len(price_range)]
+    """
+    # Save original strategies
+    original_price_i = seller_i.price
+    original_ad_i = seller_i.ad_budget
+    original_price_j = seller_j.price
+    original_ad_j = seller_j.ad_budget
+
+    # Fix competitor's strategy
+    seller_j.price = competitor_fixed_price
+    seller_j.ad_budget = competitor_fixed_ad
+
+    # Initialize profit grid
+    profit_grid = np.zeros((len(ad_range), len(price_range)))
+
+    # Calculate profit for each combination
+    for i, ad in enumerate(ad_range):
+        for j, price in enumerate(price_range):
+            # Update seller i's strategy
+            seller_i.price = price
+            seller_i.ad_budget = ad
+
+            # Calculate profit
+            profit = market.calculate_profit(seller_i, seller_j)
+            profit_grid[i, j] = profit
+
+    # Restore original strategies
+    seller_i.price = original_price_i
+    seller_i.ad_budget = original_ad_i
+    seller_j.price = original_price_j
+    seller_j.ad_budget = original_ad_j
+
+    return profit_grid
+
+
+# ==================================================================================
+# GENERATE PROFIT GRIDS FOR BOTH SELLERS
+# ==================================================================================
+
+print("\n[1] Generating profit landscapes...")
+
+# Check if we have enough sellers for landscape analysis
+if len(sellers) < 2:
+    print(f"\n⚠ WARNING: Only {len(sellers)} seller(s) found.")
+    print("Profit landscape visualization requires at least 2 sellers (duopoly).")
+    print("\nRECOMMENDATIONS:")
+    print("1. Select a product with more price variation (different quantiles)")
+    print("2. Adjust price quantiles to create multiple sellers")
+    print("3. Use a different product from the top 20 list")
+    print("\nSkipping profit landscape visualization...")
+    print("="*80)
+    print("\n✓ Seller modeling completed (landscape skipped due to single seller)")
+else:
+    # Get the two sellers (duopoly)
+    seller_names = list(sellers.keys())
+    seller_a = sellers[seller_names[0]]
+    seller_b = sellers[seller_names[1]]
+
+    # Define price range: from (cost + 0.01) to (cost + 0.20) with 50 points
+    price_min = estimated_cost + 0.01
+    price_max = estimated_cost + 0.20
+    price_range = np.linspace(price_min, price_max, 50)
+
+    # Define ad budget range: from 0 to 2000 with 50 points
+    ad_range = np.linspace(0, 2000, 50)
+
+    print(f"\nPrice range: £{price_min:.2f} to £{price_max:.2f} (50 points)")
+    print(f"Ad budget range: £0 to £2000 (50 points)")
+    print(f"Total combinations per seller: {len(price_range)} × {len(ad_range)} = {len(price_range) * len(ad_range)}")
+
+    # Store current strategies
+    current_price_a = seller_a.price
+    current_ad_a = seller_a.ad_budget
+    current_price_b = seller_b.price
+    current_ad_b = seller_b.ad_budget
+
+    # Calculate profit landscape for Seller A (with Seller B fixed)
+    print(f"\nCalculating profit landscape for {seller_a.name}...")
+    print(f"  (keeping {seller_b.name} fixed at price=£{current_price_b:.2f}, ad=£{current_ad_b:.2f})")
+    profit_grid_A = calculate_profit_landscape(
+        market, seller_a, seller_b,
+        price_range, ad_range,
+        current_price_b, current_ad_b
+    )
+
+    # Calculate profit landscape for Seller B (with Seller A fixed)
+    print(f"\nCalculating profit landscape for {seller_b.name}...")
+    print(f"  (keeping {seller_a.name} fixed at price=£{current_price_a:.2f}, ad=£{current_ad_a:.2f})")
+    profit_grid_B = calculate_profit_landscape(
+        market, seller_b, seller_a,
+        price_range, ad_range,
+        current_price_a, current_ad_a
+    )
+
+    print("\n✓ Profit landscapes calculated successfully!")
+
+    # ==================================================================================
+    # CREATE VISUALIZATION
+    # ==================================================================================
+
+    print("\n[2] Creating visualizations...")
+
+    fig, axes = plt.subplots(3, 1, figsize=(15, 18))
+    fig.suptitle('Profit Landscape Analysis: Price and Advertising Optimization',
+                 fontsize=18, fontweight='bold', y=0.995)
+
+    cmap = 'RdYlGn'
+
+    # Subplot 1: Seller A
+    ax1 = axes[0]
+    im1 = ax1.imshow(profit_grid_A, aspect='auto', origin='lower',
+                     extent=[price_range[0], price_range[-1], ad_range[0], ad_range[-1]],
+                     cmap=cmap)
+    cbar1 = plt.colorbar(im1, ax=ax1)
+    cbar1.set_label('Profit (£)', fontsize=12, fontweight='bold')
+    ax1.plot(current_price_a, current_ad_a, 'wX', markersize=15,
+             markeredgewidth=3, label='Current Strategy')
+    ax1.set_xlabel('Price (£)', fontsize=12, fontweight='bold')
+    ax1.set_ylabel('Advertising Budget (£)', fontsize=12, fontweight='bold')
+    ax1.set_title(f'{seller_a.name}: Profit Landscape ({seller_b.name} Fixed)',
+                  fontsize=14, fontweight='bold')
+    ax1.legend(loc='upper right', fontsize=10)
+    ax1.grid(True, alpha=0.3, linestyle='--')
+
+    # Subplot 2: Seller B
+    ax2 = axes[1]
+    im2 = ax2.imshow(profit_grid_B, aspect='auto', origin='lower',
+                     extent=[price_range[0], price_range[-1], ad_range[0], ad_range[-1]],
+                     cmap=cmap)
+    cbar2 = plt.colorbar(im2, ax=ax2)
+    cbar2.set_label('Profit (£)', fontsize=12, fontweight='bold')
+    ax2.plot(current_price_b, current_ad_b, 'wX', markersize=15,
+             markeredgewidth=3, label='Current Strategy')
+    ax2.set_xlabel('Price (£)', fontsize=12, fontweight='bold')
+    ax2.set_ylabel('Advertising Budget (£)', fontsize=12, fontweight='bold')
+    ax2.set_title(f'{seller_b.name}: Profit Landscape ({seller_a.name} Fixed)',
+                  fontsize=14, fontweight='bold')
+    ax2.legend(loc='upper right', fontsize=10)
+    ax2.grid(True, alpha=0.3, linestyle='--')
+
+    # Subplot 3: Profit vs Price
+    ax3 = axes[2]
+    profit_vs_price_A = []
+    profit_vs_price_B = []
+
+    for price in price_range:
+        seller_a.price = price
+        seller_a.ad_budget = current_ad_a
+        seller_b.price = current_price_b
+        seller_b.ad_budget = current_ad_b
+        profit_a = market.calculate_profit(seller_a, seller_b)
+        profit_vs_price_A.append(profit_a)
+
+        seller_a.price = current_price_a
+        seller_a.ad_budget = current_ad_a
+        seller_b.price = price
+        seller_b.ad_budget = current_ad_b
+        profit_b = market.calculate_profit(seller_b, seller_a)
+        profit_vs_price_B.append(profit_b)
+
+    seller_a.price = current_price_a
+    seller_a.ad_budget = current_ad_a
+    seller_b.price = current_price_b
+    seller_b.ad_budget = current_ad_b
+
+    ax3.plot(price_range, profit_vs_price_A, 'b-', linewidth=2.5, label=f'{seller_a.name}')
+    ax3.plot(price_range, profit_vs_price_B, 'r-', linewidth=2.5, label=f'{seller_b.name}')
+
+    optimal_idx_a = np.argmax(profit_vs_price_A)
+    optimal_price_a = price_range[optimal_idx_a]
+    optimal_idx_b = np.argmax(profit_vs_price_B)
+    optimal_price_b = price_range[optimal_idx_b]
+
+    ax3.axvline(optimal_price_a, color='blue', linestyle='--', linewidth=2, alpha=0.7,
+                label=f'{seller_a.name} Optimal: £{optimal_price_a:.2f}')
+    ax3.axvline(optimal_price_b, color='red', linestyle='--', linewidth=2, alpha=0.7,
+                label=f'{seller_b.name} Optimal: £{optimal_price_b:.2f}')
+
+    ax3.set_xlabel('Price (£)', fontsize=12, fontweight='bold')
+    ax3.set_ylabel('Profit (£)', fontsize=12, fontweight='bold')
+    ax3.set_title('Profit vs Price (Ad Budget Fixed)', fontsize=14, fontweight='bold')
+    ax3.legend(loc='best', fontsize=10)
+    ax3.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig('profit_landscape.png', dpi=300, bbox_inches='tight')
+    print("✓ Visualization saved as 'profit_landscape.png'")
+
+    # Find optimal strategies
+    print("\n" + "="*80)
+    print("OPTIMAL STRATEGIES (GIVEN COMPETITOR FIXED)")
+    print("="*80)
+
+    max_idx_a = np.unravel_index(np.argmax(profit_grid_A), profit_grid_A.shape)
+    optimal_ad_idx_a, optimal_price_idx_a = max_idx_a
+    optimal_price_a_full = price_range[optimal_price_idx_a]
+    optimal_ad_a_full = ad_range[optimal_ad_idx_a]
+    optimal_profit_a_full = profit_grid_A[optimal_ad_idx_a, optimal_price_idx_a]
+
+    print(f"\n{seller_a.name}'s optimal strategy:")
+    print(f"  Price: £{optimal_price_a_full:.2f}")
+    print(f"  Ad Budget: £{optimal_ad_a_full:.2f}")
+    print(f"  Expected Profit: £{optimal_profit_a_full:.2f}")
+
+    max_idx_b = np.unravel_index(np.argmax(profit_grid_B), profit_grid_B.shape)
+    optimal_ad_idx_b, optimal_price_idx_b = max_idx_b
+    optimal_price_b_full = price_range[optimal_price_idx_b]
+    optimal_ad_b_full = ad_range[optimal_ad_idx_b]
+    optimal_profit_b_full = profit_grid_B[optimal_ad_idx_b, optimal_price_idx_b]
+
+    print(f"\n{seller_b.name}'s optimal strategy:")
+    print(f"  Price: £{optimal_price_b_full:.2f}")
+    print(f"  Ad Budget: £{optimal_ad_b_full:.2f}")
+    print(f"  Expected Profit: £{optimal_profit_b_full:.2f}")
+
+    print("\n✓ Profit landscape analysis completed successfully!")
+
+
+# ==================================================================================
+# PARAMETER SENSITIVITY ANALYSIS
+# ==================================================================================
+
+print("\n" + "="*80)
+print("PARAMETER SENSITIVITY ANALYSIS")
+print("="*80)
+
+
+def analyze_parameter_sensitivity(market, seller_a, seller_b):
+    """
+    Analyze how profits change with different α (advertising effectiveness)
+    and β (price sensitivity) values.
+
+    Tests multiple scenarios and returns DataFrame with results for all combinations.
+    """
+    # Define parameter ranges
+    alpha_values = {
+        'Low': 0.005,
+        'Medium': 0.01,
+        'High': 0.02
+    }
+
+    beta_values = {
+        'Low': 2.0,
+        'Medium': 5.0,
+        'High': 10.0
+    }
+
+    results = []
+
+    print("\nTesting 9 parameter combinations (3 α × 3 β)...")
+    print("Alpha (α) - Advertising effectiveness")
+    print("Beta (β) - Price sensitivity")
+
+    # Store original parameters
+    original_alpha = market.alpha
+    original_beta = market.beta
+
+    # Test all combinations
+    for alpha_label, alpha_val in alpha_values.items():
+        for beta_label, beta_val in beta_values.items():
+            # Update market parameters
+            market.alpha = alpha_val
+            market.beta = beta_val
+
+            # Calculate demands and profits
+            demand_a = market.calculate_demand(seller_a, seller_b)
+            profit_a = market.calculate_profit(seller_a, seller_b)
+
+            demand_b = market.calculate_demand(seller_b, seller_a)
+            profit_b = market.calculate_profit(seller_b, seller_a)
+
+            results.append({
+                'alpha': alpha_val,
+                'beta': beta_val,
+                'alpha_label': alpha_label,
+                'beta_label': beta_label,
+                'seller_A_demand': demand_a,
+                'seller_A_profit': profit_a,
+                'seller_B_demand': demand_b,
+                'seller_B_profit': profit_b
+            })
+
+    # Restore original parameters
+    market.alpha = original_alpha
+    market.beta = original_beta
+
+    return pd.DataFrame(results)
+
+
+# Run sensitivity analysis
+if len(sellers) >= 2:
+    print("\n[1] Running parameter sensitivity analysis...")
+
+    # Get first two sellers
+    seller_names = list(sellers.keys())
+    seller_a = sellers[seller_names[0]]
+    seller_b = sellers[seller_names[1]]
+
+    # Analyze sensitivity
+    sensitivity_results = analyze_parameter_sensitivity(market, seller_a, seller_b)
+
+    print("\n✓ Sensitivity analysis completed!")
+
+    # ==================================================================================
+    # PRINT FORMATTED RESULTS TABLE
+    # ==================================================================================
+
+    print("\n" + "="*80)
+    print("SENSITIVITY ANALYSIS RESULTS")
+    print("="*80)
+
+    # Create formatted table
+    print("\nProfit Sensitivity to α (Advertising) and β (Price Sensitivity):")
+    print("-" * 100)
+    print(f"{'α Level':<10} {'β Level':<10} {'α Value':<10} {'β Value':<10} "
+          f"{'A Demand':<12} {'A Profit':<12} {'B Demand':<12} {'B Profit':<12}")
+    print("-" * 100)
+
+    for idx, row in sensitivity_results.iterrows():
+        # Highlight baseline scenario
+        prefix = ">>> " if row['alpha_label'] == 'Medium' and row['beta_label'] == 'Medium' else "    "
+
+        print(f"{prefix}{row['alpha_label']:<10} {row['beta_label']:<10} "
+              f"{row['alpha']:<10.3f} {row['beta']:<10.1f} "
+              f"{row['seller_A_demand']:<12.2f} {row['seller_A_profit']:<12.2f} "
+              f"{row['seller_B_demand']:<12.2f} {row['seller_B_profit']:<12.2f}")
+
+    print("-" * 100)
+    print(">>> = Baseline scenario (Medium α, Medium β)")
+
+    # ==================================================================================
+    # CREATE VISUALIZATION
+    # ==================================================================================
+
+    print("\n[2] Creating visualizations...")
+
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    fig.suptitle('Parameter Sensitivity Analysis: Impact of α and β on Seller Profits',
+                 fontsize=16, fontweight='bold', y=0.995)
+
+    # Define colors for different levels
+    colors = {'Low': '#FF6B6B', 'Medium': '#4ECDC4', 'High': '#45B7D1'}
+
+    # Prepare data for grouped bar charts
+    alpha_labels = ['Low', 'Medium', 'High']
+    beta_labels = ['Low', 'Medium', 'High']
+
+    x_positions = np.arange(len(beta_labels))
+    bar_width = 0.25
+
+    # ------------------------------------------------------------------------------
+    # Subplot 1: Impact of α on Seller A Profit (grouped by β)
+    # ------------------------------------------------------------------------------
+    ax1 = axes[0, 0]
+
+    for i, alpha_label in enumerate(alpha_labels):
+        profits = []
+        for beta_label in beta_labels:
+            profit = sensitivity_results[
+                (sensitivity_results['alpha_label'] == alpha_label) &
+                (sensitivity_results['beta_label'] == beta_label)
+            ]['seller_A_profit'].values[0]
+            profits.append(profit)
+
+        ax1.bar(x_positions + i * bar_width, profits, bar_width,
+                label=f'α = {alpha_label}', color=colors[alpha_label], alpha=0.8)
+
+    ax1.set_xlabel('Price Sensitivity (β)', fontsize=11, fontweight='bold')
+    ax1.set_ylabel('Profit (£)', fontsize=11, fontweight='bold')
+    ax1.set_title(f'{seller_a.name}: Impact of Advertising Effectiveness (α)',
+                  fontsize=12, fontweight='bold')
+    ax1.set_xticks(x_positions + bar_width)
+    ax1.set_xticklabels(beta_labels)
+    ax1.legend(loc='best', fontsize=9)
+    ax1.grid(axis='y', alpha=0.3)
+    ax1.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
+
+    # ------------------------------------------------------------------------------
+    # Subplot 2: Impact of α on Seller B Profit (grouped by β)
+    # ------------------------------------------------------------------------------
+    ax2 = axes[0, 1]
+
+    for i, alpha_label in enumerate(alpha_labels):
+        profits = []
+        for beta_label in beta_labels:
+            profit = sensitivity_results[
+                (sensitivity_results['alpha_label'] == alpha_label) &
+                (sensitivity_results['beta_label'] == beta_label)
+            ]['seller_B_profit'].values[0]
+            profits.append(profit)
+
+        ax2.bar(x_positions + i * bar_width, profits, bar_width,
+                label=f'α = {alpha_label}', color=colors[alpha_label], alpha=0.8)
+
+    ax2.set_xlabel('Price Sensitivity (β)', fontsize=11, fontweight='bold')
+    ax2.set_ylabel('Profit (£)', fontsize=11, fontweight='bold')
+    ax2.set_title(f'{seller_b.name}: Impact of Advertising Effectiveness (α)',
+                  fontsize=12, fontweight='bold')
+    ax2.set_xticks(x_positions + bar_width)
+    ax2.set_xticklabels(beta_labels)
+    ax2.legend(loc='best', fontsize=9)
+    ax2.grid(axis='y', alpha=0.3)
+    ax2.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
+
+    # ------------------------------------------------------------------------------
+    # Subplot 3: Impact of β on Seller A Profit (grouped by α)
+    # ------------------------------------------------------------------------------
+    ax3 = axes[1, 0]
+
+    for i, beta_label in enumerate(beta_labels):
+        profits = []
+        for alpha_label in alpha_labels:
+            profit = sensitivity_results[
+                (sensitivity_results['alpha_label'] == alpha_label) &
+                (sensitivity_results['beta_label'] == beta_label)
+            ]['seller_A_profit'].values[0]
+            profits.append(profit)
+
+        ax3.bar(x_positions + i * bar_width, profits, bar_width,
+                label=f'β = {beta_label}', color=colors[beta_label], alpha=0.8)
+
+    ax3.set_xlabel('Advertising Effectiveness (α)', fontsize=11, fontweight='bold')
+    ax3.set_ylabel('Profit (£)', fontsize=11, fontweight='bold')
+    ax3.set_title(f'{seller_a.name}: Impact of Price Sensitivity (β)',
+                  fontsize=12, fontweight='bold')
+    ax3.set_xticks(x_positions + bar_width)
+    ax3.set_xticklabels(alpha_labels)
+    ax3.legend(loc='best', fontsize=9)
+    ax3.grid(axis='y', alpha=0.3)
+    ax3.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
+
+    # ------------------------------------------------------------------------------
+    # Subplot 4: Impact of β on Seller B Profit (grouped by α)
+    # ------------------------------------------------------------------------------
+    ax4 = axes[1, 1]
+
+    for i, beta_label in enumerate(beta_labels):
+        profits = []
+        for alpha_label in alpha_labels:
+            profit = sensitivity_results[
+                (sensitivity_results['alpha_label'] == alpha_label) &
+                (sensitivity_results['beta_label'] == beta_label)
+            ]['seller_B_profit'].values[0]
+            profits.append(profit)
+
+        ax4.bar(x_positions + i * bar_width, profits, bar_width,
+                label=f'β = {beta_label}', color=colors[beta_label], alpha=0.8)
+
+    ax4.set_xlabel('Advertising Effectiveness (α)', fontsize=11, fontweight='bold')
+    ax4.set_ylabel('Profit (£)', fontsize=11, fontweight='bold')
+    ax4.set_title(f'{seller_b.name}: Impact of Price Sensitivity (β)',
+                  fontsize=12, fontweight='bold')
+    ax4.set_xticks(x_positions + bar_width)
+    ax4.set_xticklabels(alpha_labels)
+    ax4.legend(loc='best', fontsize=9)
+    ax4.grid(axis='y', alpha=0.3)
+    ax4.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
+
+    plt.tight_layout()
+    plt.savefig('parameter_sensitivity.png', dpi=300, bbox_inches='tight')
+    print("✓ Visualization saved as 'parameter_sensitivity.png'")
+
+    # ==================================================================================
+    # GENERATE INSIGHTS
+    # ==================================================================================
+
+    print("\n" + "="*80)
+    print("KEY INSIGHTS FROM SENSITIVITY ANALYSIS")
+    print("="*80)
+
+    # Calculate profit ranges
+    baseline = sensitivity_results[
+        (sensitivity_results['alpha_label'] == 'Medium') &
+        (sensitivity_results['beta_label'] == 'Medium')
+    ].iloc[0]
+
+    profit_range_A_alpha = sensitivity_results.groupby('alpha_label')['seller_A_profit'].mean()
+    profit_range_A_beta = sensitivity_results.groupby('beta_label')['seller_A_profit'].mean()
+
+    profit_range_B_alpha = sensitivity_results.groupby('alpha_label')['seller_B_profit'].mean()
+    profit_range_B_beta = sensitivity_results.groupby('beta_label')['seller_B_profit'].mean()
+
+    alpha_impact_A = profit_range_A_alpha.max() - profit_range_A_alpha.min()
+    beta_impact_A = profit_range_A_beta.max() - profit_range_A_beta.min()
+
+    alpha_impact_B = profit_range_B_alpha.max() - profit_range_B_alpha.min()
+    beta_impact_B = profit_range_B_beta.max() - profit_range_B_beta.min()
+
+    insights = []
+
+    # Insight 1: Overall parameter impact
+    if alpha_impact_A > beta_impact_A and alpha_impact_B > beta_impact_B:
+        insights.append(
+            f"• Advertising effectiveness (α) has GREATER impact than price sensitivity (β) "
+            f"for both sellers\n"
+            f"  - {seller_a.name}: α impact = £{alpha_impact_A:.2f}, β impact = £{beta_impact_A:.2f}\n"
+            f"  - {seller_b.name}: α impact = £{alpha_impact_B:.2f}, β impact = £{beta_impact_B:.2f}"
+        )
+    else:
+        insights.append(
+            f"• Price sensitivity (β) has GREATER impact than advertising effectiveness (α)\n"
+            f"  - {seller_a.name}: β impact = £{beta_impact_A:.2f}, α impact = £{alpha_impact_A:.2f}\n"
+            f"  - {seller_b.name}: β impact = £{beta_impact_B:.2f}, α impact = £{alpha_impact_B:.2f}"
+        )
+
+    # Insight 2: Best/worst scenarios
+    best_scenario_A = sensitivity_results.loc[sensitivity_results['seller_A_profit'].idxmax()]
+    worst_scenario_A = sensitivity_results.loc[sensitivity_results['seller_A_profit'].idxmin()]
+
+    insights.append(
+        f"\n• {seller_a.name}'s profit ranges from £{worst_scenario_A['seller_A_profit']:.2f} to £{best_scenario_A['seller_A_profit']:.2f}\n"
+        f"  - Best: α = {best_scenario_A['alpha_label']}, β = {best_scenario_A['beta_label']}\n"
+        f"  - Worst: α = {worst_scenario_A['alpha_label']}, β = {worst_scenario_A['beta_label']}"
+    )
+
+    best_scenario_B = sensitivity_results.loc[sensitivity_results['seller_B_profit'].idxmax()]
+    worst_scenario_B = sensitivity_results.loc[sensitivity_results['seller_B_profit'].idxmin()]
+
+    insights.append(
+        f"\n• {seller_b.name}'s profit ranges from £{worst_scenario_B['seller_B_profit']:.2f} to £{best_scenario_B['seller_B_profit']:.2f}\n"
+        f"  - Best: α = {best_scenario_B['alpha_label']}, β = {best_scenario_B['beta_label']}\n"
+        f"  - Worst: α = {worst_scenario_B['alpha_label']}, β = {worst_scenario_B['beta_label']}"
+    )
+
+    # Insight 3: Baseline comparison
+    insights.append(
+        f"\n• At baseline (α=Medium, β=Medium):\n"
+        f"  - {seller_a.name} profit: £{baseline['seller_A_profit']:.2f}\n"
+        f"  - {seller_b.name} profit: £{baseline['seller_B_profit']:.2f}"
+    )
+
+    # Insight 4: Asymmetric effects
+    if abs(alpha_impact_A - alpha_impact_B) > 50:
+        stronger_seller = seller_a.name if alpha_impact_A > alpha_impact_B else seller_b.name
+        insights.append(
+            f"\n• Parameter changes affect sellers asymmetrically\n"
+            f"  - {stronger_seller} is more sensitive to advertising effectiveness"
+        )
+
+    if abs(beta_impact_A - beta_impact_B) > 50:
+        stronger_seller = seller_a.name if beta_impact_A > beta_impact_B else seller_b.name
+        insights.append(
+            f"\n• {stronger_seller} is more sensitive to price competition"
+        )
+
+    # Print insights
+    for insight in insights[:5]:  # Limit to 5 insights
+        print(insight)
+
+    # ==================================================================================
+    # RESET TO BASELINE
+    # ==================================================================================
+
+    print("\n" + "="*80)
+    market.alpha = 0.01
+    market.beta = 5.0
+    print("✓ Market reset to baseline parameters (α=0.01, β=5.0)")
+    print("="*80)
+
+    print("\n✓ Parameter sensitivity analysis completed successfully!")
+
+else:
+    print("\n⚠ WARNING: Sensitivity analysis requires at least 2 sellers.")
+    print("Skipping parameter sensitivity analysis...")
