@@ -61,31 +61,77 @@ print(f"{'='*60}")
 
 # 4. Create 2-3 sellers based on price tiers
 print("\n[4] Creating sellers based on price quantiles...")
-q33 = selected_product_data['Price'].quantile(0.33)
-q67 = selected_product_data['Price'].quantile(0.67)
 
-print(f"33rd Percentile Price: €{q33:.2f}")
-print(f"67th Percentile Price: €{q67:.2f}")
+# Get unique prices and sort them
+unique_prices = sorted(selected_product_data['Price'].unique())
+print(f"Unique prices found: {len(unique_prices)} different price points")
+print(f"Price range: €{min(unique_prices):.2f} to €{max(unique_prices):.2f}")
+
+# If we have enough unique prices, create 3 sellers based on price ranges
+# Otherwise, use transaction-based quantiles
+if len(unique_prices) >= 3:
+    # Use actual unique prices to define boundaries
+    low_cutoff = unique_prices[len(unique_prices) // 3]
+    high_cutoff = unique_prices[2 * len(unique_prices) // 3]
+    print(f"\nUsing unique price boundaries:")
+    print(f"  Low cutoff: €{low_cutoff:.2f}")
+    print(f"  High cutoff: €{high_cutoff:.2f}")
+else:
+    # Fall back to transaction quantiles
+    low_cutoff = selected_product_data['Price'].quantile(0.33)
+    high_cutoff = selected_product_data['Price'].quantile(0.67)
+    print(f"\nUsing transaction quantiles:")
+    print(f"  33rd percentile: €{low_cutoff:.2f}")
+    print(f"  67th percentile: €{high_cutoff:.2f}")
 
 # Assign sellers based on price tiers
 def assign_seller(price):
-    if price <= selected_product_data['Price'].quantile(0.30):
+    if price < low_cutoff:
         return 'Seller_A'
-    elif price <= selected_product_data['Price'].quantile(0.60):
+    elif price < high_cutoff:
         return 'Seller_B'
     else:
         return 'Seller_C'
 
 selected_product_data['Seller'] = selected_product_data['Price'].apply(assign_seller)
 
-# Check how many sellers we actually have
+# Check how many sellers we actually have and their balance
 actual_sellers = selected_product_data['Seller'].nunique()
+seller_counts = selected_product_data['Seller'].value_counts()
 print(f"\nNumber of sellers created: {actual_sellers}")
+print("\nTransactions per seller:")
+for seller, count in seller_counts.items():
+    pct = (count / len(selected_product_data)) * 100
+    print(f"  {seller}: {count} transactions ({pct:.1f}%)")
+
+# If we only got 2 sellers, adjust boundaries to force 3
+if actual_sellers < 3:
+    print("\n⚠️  Only 2 sellers created. Adjusting boundaries to create 3 balanced sellers...")
+    # Use different percentiles to ensure 3 groups
+    low_cutoff = selected_product_data['Price'].quantile(0.25)
+    high_cutoff = selected_product_data['Price'].quantile(0.75)
+
+    def assign_seller_forced(price):
+        if price <= low_cutoff:
+            return 'Seller_A'
+        elif price <= high_cutoff:
+            return 'Seller_B'
+        else:
+            return 'Seller_C'
+
+    selected_product_data['Seller'] = selected_product_data['Price'].apply(assign_seller_forced)
+    actual_sellers = selected_product_data['Seller'].nunique()
+    seller_counts = selected_product_data['Seller'].value_counts()
+    print(f"After adjustment: {actual_sellers} sellers")
+    print("\nAdjusted transactions per seller:")
+    for seller, count in seller_counts.items():
+        pct = (count / len(selected_product_data)) * 100
+        print(f"  {seller}: {count} transactions ({pct:.1f}%)")
 
 print("\nSeller Assignment:")
-print(f"- Seller_A: Low-price/Discount seller (<= €{q33:.2f})")
-print(f"- Seller_B: Mid-price/Balanced seller (€{q33:.2f} - €{q67:.2f})")
-print(f"- Seller_C: High-price/Premium seller (> €{q67:.2f})")
+print(f"- Seller_A: Low-price/Discount seller (< €{low_cutoff:.2f})")
+print(f"- Seller_B: Mid-price/Balanced seller (€{low_cutoff:.2f} - €{high_cutoff:.2f})")
+print(f"- Seller_C: High-price/Premium seller (> €{high_cutoff:.2f})")
 
 # 5. Calculate seller characteristics
 print("\n[5] Calculating seller characteristics...")
@@ -585,12 +631,14 @@ class MarketModel:
                 avg_competitor_price = sum(c.price for c in competitors) / len(competitors)
 
                 # Create a "virtual average competitor" for calculation
+                # Use minimum cost from all sellers to avoid validation error
+                min_cost = min(s.production_cost for s in self.sellers.values())
                 avg_competitor = Seller(
                     name="Avg_Competitor",
-                    cost=0,
+                    cost=min_cost,  # Use actual minimum cost instead of 0
                     initial_price=avg_competitor_price,
                     initial_ad_budget=0,
-                    base_demand=0
+                    base_demand=0.1  # Minimal positive value to avoid validation error
                 )
 
                 profits[seller_i.name] = self.calculate_profit(

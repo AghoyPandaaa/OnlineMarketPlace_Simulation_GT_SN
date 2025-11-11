@@ -824,8 +824,41 @@ if __name__ == "__main__":
     print(f"  Advertising Effectiveness: {market.alpha:.4f}")
 
     seller_names = list(sellers.keys())
-    seller_A = sellers[seller_names[0]]  # First seller
-    seller_B = sellers[seller_names[1]]
+
+    # Check seller balance and select the two most balanced
+    print("\n" + "="*80)
+    print("SELLER SELECTION FOR NASH EQUILIBRIUM")
+    print("="*80)
+    print("\nAvailable sellers:")
+    for name in seller_names:
+        s = sellers[name]
+        print(f"  {name}: base_demand={s.base_demand:.2f}, price=€{s.price:.2f}, ad=€{s.advertising_budget:.0f}")
+
+    # Find the two sellers with most similar base_demand
+    if len(sellers) >= 3:
+        # Calculate demand ratios between all pairs
+        best_ratio = float('inf')
+        best_pair = None
+
+        for i, name1 in enumerate(seller_names):
+            for j, name2 in enumerate(seller_names[i+1:], start=i+1):
+                s1, s2 = sellers[name1], sellers[name2]
+                ratio = max(s1.base_demand, s2.base_demand) / min(s1.base_demand, s2.base_demand)
+                print(f"\n{name1} vs {name2}: demand ratio = {ratio:.2f}x")
+                if ratio < best_ratio:
+                    best_ratio = ratio
+                    best_pair = (name1, name2)
+
+        print(f"\n✓ Selected most balanced pair: {best_pair[0]} vs {best_pair[1]} (ratio: {best_ratio:.2f}x)")
+        seller_A = sellers[best_pair[0]]
+        seller_B = sellers[best_pair[1]]
+    else:
+        # Only 2 sellers available, use them
+        seller_A = sellers[seller_names[0]]
+        seller_B = sellers[seller_names[1]]
+        print(f"\n⚠️  Only 2 sellers available, using: {seller_names[0]} vs {seller_names[1]}")
+
+    print("="*80)
 
     print(f"\n{seller_A.name}:")
     print(f"  Brand Value: {seller_A.brand_value:.2f}")
