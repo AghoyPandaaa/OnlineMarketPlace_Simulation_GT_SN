@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from pathlib import Path
 
 # Set visualization style
 sns.set_style("whitegrid")
@@ -13,7 +14,9 @@ print("="*80)
 
 # 1. Load the cleaned dataset
 print("\n[1] Loading cleaned dataset...")
-df = pd.read_csv('../Data/ProcessedData/cleaned_online_retail_data.csv')
+# Use absolute path relative to this file's location
+data_path = Path(__file__).parent.parent / 'Data' / 'ProcessedData' / 'cleaned_online_retail_data.csv'
+df = pd.read_csv(data_path)
 print(f"Dataset loaded successfully: {df.shape[0]} rows, {df.shape[1]} columns")
 print(f"Columns: {list(df.columns)}")
 
@@ -50,7 +53,7 @@ print("SELECTED PRODUCT DETAILS:")
 print(f"{'='*60}")
 print(f"Product Code: {selected_stock_code}")
 print(f"Product Name: {selected_product['Description']}")
-print(f"Price Range: ${selected_product['Min_Price']:.2f} - ${selected_product['Max_Price']:.2f}")
+print(f"Price Range: €{selected_product['Min_Price']:.2f} - €{selected_product['Max_Price']:.2f}")
 print(f"Unique Price Points: {int(selected_product['Unique_Prices'])}")
 print(f"Total Transactions: {selected_product['Num_Transactions']}")
 print(f"Total Quantity Sold: {int(selected_product['Total_Quantity'])}")
@@ -61,8 +64,8 @@ print("\n[4] Creating sellers based on price quantiles...")
 q33 = selected_product_data['Price'].quantile(0.33)
 q67 = selected_product_data['Price'].quantile(0.67)
 
-print(f"33rd Percentile Price: ${q33:.2f}")
-print(f"67th Percentile Price: ${q67:.2f}")
+print(f"33rd Percentile Price: €{q33:.2f}")
+print(f"67th Percentile Price: €{q67:.2f}")
 
 # Assign sellers based on price tiers
 def assign_seller(price):
@@ -80,9 +83,9 @@ actual_sellers = selected_product_data['Seller'].nunique()
 print(f"\nNumber of sellers created: {actual_sellers}")
 
 print("\nSeller Assignment:")
-print(f"- Seller_A: Low-price/Discount seller (<= ${q33:.2f})")
-print(f"- Seller_B: Mid-price/Balanced seller (${q33:.2f} - ${q67:.2f})")
-print(f"- Seller_C: High-price/Premium seller (> ${q67:.2f})")
+print(f"- Seller_A: Low-price/Discount seller (<= €{q33:.2f})")
+print(f"- Seller_B: Mid-price/Balanced seller (€{q33:.2f} - €{q67:.2f})")
+print(f"- Seller_C: High-price/Premium seller (> €{q67:.2f})")
 
 # 5. Calculate seller characteristics
 print("\n[5] Calculating seller characteristics...")
@@ -102,17 +105,17 @@ print("SELLER STATISTICS:")
 print("="*80)
 for idx, row in seller_stats.iterrows():
     print(f"\n{row['Seller']}:")
-    print(f"  Average Price: ${row['Avg_Price']:.2f}")
-    print(f"  Price Range: ${row['Min_Price']:.2f} - ${row['Max_Price']:.2f}")
+    print(f"  Average Price: €{row['Avg_Price']:.2f}")
+    print(f"  Price Range: €{row['Min_Price']:.2f} - €{row['Max_Price']:.2f}")
     print(f"  Total Quantity Sold: {int(row['Total_Quantity'])}")
     print(f"  Avg Quantity per Transaction: {row['Avg_Quantity_Per_Transaction']:.2f}")
-    print(f"  Total Revenue: ${row['Total_Revenue']:.2f}")
+    print(f"  Total Revenue: €{row['Total_Revenue']:.2f}")
     print(f"  Number of Transactions: {int(row['Num_Transactions'])}")
 
 # 6. Estimate production cost
 print("\n[6] Estimating production cost...")
 estimated_cost = 0.6 * seller_stats['Min_Price'].mean()
-print(f"\nEstimated Production Cost: ${estimated_cost:.2f}")
+print(f"\nEstimated Production Cost: €{estimated_cost:.2f}")
 print(f"(Calculated as 60% of average minimum price across sellers)")
 
 # 7. Calculate base demand for each seller
@@ -135,10 +138,10 @@ seller_colors = [colors[i] for i in range(len(seller_stats))]
 axes[0, 0].bar(seller_stats['Seller'], seller_stats['Avg_Price'], color=seller_colors)
 axes[0, 0].set_title('Average Price by Seller', fontweight='bold')
 axes[0, 0].set_xlabel('Seller')
-axes[0, 0].set_ylabel('Average Price ($)')
+axes[0, 0].set_ylabel('Average Price (€)')
 axes[0, 0].grid(axis='y', alpha=0.3)
 for i, v in enumerate(seller_stats['Avg_Price']):
-    axes[0, 0].text(i, v + (v * 0.02), f'${v:.2f}', ha='center', va='bottom', fontweight='bold')
+    axes[0, 0].text(i, v + (v * 0.02), f'€{v:.2f}', ha='center', va='bottom', fontweight='bold')
 
 # Top-right: Total quantities
 axes[0, 1].bar(seller_stats['Seller'], seller_stats['Total_Quantity'], color=seller_colors)
@@ -153,10 +156,10 @@ for i, v in enumerate(seller_stats['Total_Quantity']):
 axes[1, 0].bar(seller_stats['Seller'], seller_stats['Total_Revenue'], color=seller_colors)
 axes[1, 0].set_title('Total Revenue by Seller', fontweight='bold')
 axes[1, 0].set_xlabel('Seller')
-axes[1, 0].set_ylabel('Total Revenue ($)')
+axes[1, 0].set_ylabel('Total Revenue (€)')
 axes[1, 0].grid(axis='y', alpha=0.3)
 for i, v in enumerate(seller_stats['Total_Revenue']):
-    axes[1, 0].text(i, v + (v * 0.02), f'${v:.0f}', ha='center', va='bottom', fontweight='bold')
+    axes[1, 0].text(i, v + (v * 0.02), f'€{v:.0f}', ha='center', va='bottom', fontweight='bold')
 
 # Bottom-right: Box plot of price distributions
 palette_dict = {seller: colors[i] for i, seller in enumerate(sorted(selected_product_data['Seller'].unique()))}
@@ -164,7 +167,7 @@ sns.boxplot(data=selected_product_data, x='Seller', y='Price',
             hue='Seller', palette=palette_dict, legend=False, ax=axes[1, 1])
 axes[1, 1].set_title('Price Distribution by Seller', fontweight='bold')
 axes[1, 1].set_xlabel('Seller')
-axes[1, 1].set_ylabel('Price ($)')
+axes[1, 1].set_ylabel('Price (€)')
 axes[1, 1].grid(axis='y', alpha=0.3)
 
 plt.tight_layout()
@@ -176,10 +179,10 @@ print("\n" + "="*80)
 print("SUMMARY:")
 print("="*80)
 print(f"Selected Product: {selected_product['Description']}")
-print(f"Estimated Production Cost: ${estimated_cost:.2f}")
+print(f"Estimated Production Cost: €{estimated_cost:.2f}")
 print(f"Number of Sellers Created: {len(seller_stats)}")
 print(f"Total Market Size: {selected_product_data['Quantity'].sum()} units")
-print(f"Total Market Revenue: ${selected_product_data['Revenue'].sum():.2f}")
+print(f"Total Market Revenue: €{selected_product_data['Revenue'].sum():.2f}")
 print("="*80)
 
 print("\n✓ Seller modeling completed successfully!")
@@ -190,100 +193,206 @@ print("\n✓ Seller modeling completed successfully!")
 
 class Seller:
     """
-    Represents a seller in the online marketplace.
+    Represents a seller in the online marketplace competing in a duopoly/oligopoly.
 
-    This class models a competitive seller with pricing, advertising, and demand.
-    Each seller makes strategic decisions on price and advertising budget to
-    maximize profit in a competitive environment.
+    This class models a strategic seller in a game theory context, where each seller
+    must decide on pricing and advertising strategies to maximize profit while
+    considering competitor actions. Used in Nash Equilibrium simulations.
 
     Attributes:
-        name (str): Seller identifier (e.g., 'Seller_A')
-        cost (float): Production cost per unit (£)
-        price (float): Current selling price per unit (£)
-        ad_budget (float): Current advertising budget (£)
-        base_demand (float): Natural/baseline demand without advertising or competition effects
-        demand (float): Current calculated demand in units (updated during simulation)
-        revenue (float): Current revenue = price × demand (£)
-        profit (float): Current profit = revenue - total_costs (£)
+        name (str): Seller identifier (e.g., 'Seller_A', 'Apple', 'Dell')
+        production_cost (float): Cost to produce one unit (€). Must be positive.
+        price (float): Current selling price per unit (€). Must be > production_cost.
+        advertising_budget (float): Marketing/advertising spending (€). Must be non-negative.
+        brand_value (float): Brand strength/market position [0-10]. Higher = stronger brand.
+        demand (float): Current calculated demand in units (updated by MarketModel)
+        revenue (float): Current revenue = price × demand (€)
+        profit (float): Current profit = revenue - total_costs (€)
 
-    Economics Explanation:
-        - cost: What it costs to produce one unit
-        - price: What customers pay per unit
-        - profit_margin: price - cost (profit per unit sold)
-        - ad_budget: Money spent on advertising to increase demand
-        - base_demand: Natural demand if no advertising and equal competitor prices
-        - demand: Actual demand considering advertising and competitor actions
+    Game Theory Context:
+        - production_cost: Lower bound constraint on pricing strategy
+        - price: Strategic decision variable for Nash Equilibrium
+        - advertising_budget: Strategic decision variable for market share
+        - brand_value: Asymmetry parameter affecting competitive advantage
+
+    Nash Equilibrium Convergence:
+        - Higher brand_value → More pricing power, faster convergence
+        - Lower production_cost → Wider strategy space, may slow convergence
+        - Initial price close to equilibrium → Faster convergence
+        - Symmetric sellers → Unique pure strategy Nash Equilibrium
+        - Asymmetric sellers → May have mixed or no pure equilibrium
+
+    Expected Value Ranges:
+        - production_cost: €0.10 - €100+ (product dependent)
+        - price: production_cost * 1.1 to production_cost * 3.0 (typically)
+        - advertising_budget: €0 - €50,000+ (market dependent)
+        - brand_value: 0.0 (new/unknown) to 10.0 (market leader)
     """
 
-    def __init__(self, name, cost, initial_price, initial_ad_budget, base_demand):
+    def __init__(self, name: str, cost: float, initial_price: float,
+                 initial_ad_budget: float, base_demand: float):
         """
-        Initialize a new seller.
+        Initialize a new seller with economic and strategic parameters.
 
-        Args:
-            name (str): Seller identifier
-            cost (float): Production cost per unit (£)
-            initial_price (float): Starting price per unit (£)
-            initial_ad_budget (float): Starting advertising budget (£)
-            base_demand (float): Baseline demand without competition/advertising effects
+        Parameters:
+        -----------
+        name : str
+            Seller identifier (e.g., 'Seller_A', 'Apple MacBook')
+        cost : float
+            Production cost per unit in euros (€). Must be positive.
+            Renamed to 'production_cost' internally for clarity.
+        initial_price : float
+            Starting selling price per unit (€). Must be > production_cost.
+            This is a strategic variable in Nash Equilibrium finding.
+        initial_ad_budget : float
+            Starting advertising/marketing budget (€). Must be non-negative.
+            Renamed to 'advertising_budget' internally for consistency.
+        base_demand : float
+            Brand strength or market position indicator [0-10].
+            Renamed to 'brand_value' to reflect its role in market share.
+            Higher values indicate stronger competitive position.
+
+        Raises:
+        -------
+        ValueError
+            If any economic constraints are violated:
+            - production_cost <= 0
+            - initial_price <= production_cost (selling at a loss)
+            - initial_ad_budget < 0
+            - base_demand < 0
+
+        Notes:
+        ------
+        - Backward compatible: accepts old parameter names
+        - Stores both old and new attribute names during transition
+        - Essential for Nash Equilibrium convergence in Task III
         """
+
+        # === Input Validation ===
+        if cost <= 0:
+            raise ValueError(f"Production cost must be positive. Got: €{cost:.2f}")
+
+        if initial_price <= cost:
+            raise ValueError(
+                f"Price (€{initial_price:.2f}) must be greater than production cost (€{cost:.2f}). "
+                f"Cannot sell at a loss!"
+            )
+
+        if initial_ad_budget < 0:
+            raise ValueError(
+                f"Advertising budget cannot be negative. Got: €{initial_ad_budget:.2f}"
+            )
+
+        if base_demand < 0:
+            raise ValueError(
+                f"Brand value must be non-negative. Got: {base_demand:.2f}"
+            )
+
+        # === Core Attributes ===
         self.name = name
-        self.cost = cost
-        self.price = initial_price
-        self.ad_budget = initial_ad_budget
-        self.base_demand = base_demand
 
-        # These will be updated by the market model during simulation
+        # Store with BOTH old and new names for compatibility
+        self.cost = cost  # Backward compatibility with Task II
+        self.production_cost = cost  # New name for Task III compatibility
+
+        self.price = initial_price
+
+        self.ad_budget = initial_ad_budget  # Backward compatibility
+        self.advertising_budget = initial_ad_budget  # New name for Task III
+
+        self.base_demand = base_demand  # Backward compatibility
+        self.brand_value = base_demand  # New name for Task III
+
+        # === Calculated Attributes (updated by MarketModel) ===
         self.demand = 0.0
         self.revenue = 0.0
         self.profit = 0.0
 
     def __repr__(self):
         """String representation for easy printing."""
-        return (f"Seller(name={self.name}, price=£{self.price:.2f}, "
-                f"ad_budget=£{self.ad_budget:.2f}, demand={self.demand:.2f}, "
-                f"profit=£{self.profit:.2f})")
+        return (f"Seller(name={self.name}, price=€{self.price:.2f}, "
+                f"ad_budget=€{self.ad_budget:.2f}, demand={self.demand:.2f}, "
+                f"profit=€{self.profit:.2f})")
 
-    def update_strategy(self, new_price, new_ad_budget):
+    def update_strategy(self, new_price: float, new_ad_budget: float):
         """
         Update seller's strategic decisions (price and advertising).
 
         This method allows sellers to change their competitive strategy.
-        In game theory, this represents a "move" or "action" by the player.
+        In game theory, this represents a "move" or "action" by the player
+        during the iterative best response algorithm for finding Nash Equilibrium.
 
-        Args:
-            new_price (float): New selling price (£)
-            new_ad_budget (float): New advertising budget (£)
+        Parameters:
+        -----------
+        new_price : float
+            New selling price (€). Must be > production_cost.
+        new_ad_budget : float
+            New advertising budget (€). Must be non-negative.
+
+        Raises:
+        -------
+        ValueError
+            If new_price <= production_cost or new_ad_budget < 0
+
+        Notes:
+        ------
+        Demand, revenue, and profit will be recalculated by MarketModel
+        after strategy update.
         """
-        self.price = new_price
-        self.ad_budget = new_ad_budget
-        # Note: demand, revenue, and profit will be recalculated by market model
+        if new_price <= self.production_cost:
+            raise ValueError(
+                f"New price (€{new_price:.2f}) must be greater than "
+                f"production cost (€{self.production_cost:.2f})"
+            )
 
-    def get_profit_margin(self):
+        if new_ad_budget < 0:
+            raise ValueError(f"Advertising budget cannot be negative: €{new_ad_budget:.2f}")
+
+        self.price = new_price
+
+        # Update both attribute names for compatibility
+        self.ad_budget = new_ad_budget
+        self.advertising_budget = new_ad_budget
+
+    def get_profit_margin(self) -> float:
         """
         Calculate profit margin per unit.
 
-        Returns:
-            float: Profit per unit sold = price - cost (£)
-        """
-        return self.price - self.cost
+        In game theory context, this represents the incentive to sell more units.
+        Higher margins create stronger incentive for aggressive pricing strategies.
 
-    def get_summary(self):
+        Returns:
+        --------
+        float
+            Profit per unit sold = price - production_cost (€)
+
+        Notes:
+        ------
+        This is used in Nash Equilibrium calculations to determine
+        optimal pricing strategies given competitor actions.
+        """
+        return self.price - self.production_cost
+
+    def get_summary(self) -> dict:
         """
         Get current seller metrics as a dictionary.
 
         Returns:
-            dict: All seller metrics
+        --------
+        dict
+            All seller metrics including strategic variables,
+            calculated demand/profit, and brand positioning.
         """
         return {
             'Name': self.name,
-            'Price': f'£{self.price:.2f}',
-            'Ad_Budget': f'£{self.ad_budget:.2f}',
-            'Base_Demand': f'{self.base_demand:.2f}',
+            'Price': f'€{self.price:.2f}',
+            'Production_Cost': f'€{self.production_cost:.2f}',
+            'Advertising_Budget': f'€{self.advertising_budget:.2f}',
+            'Brand_Value': f'{self.brand_value:.2f}',
             'Demand': f'{self.demand:.2f}',
-            'Revenue': f'£{self.revenue:.2f}',
-            'Cost': f'£{self.cost:.2f}',
-            'Profit': f'£{self.profit:.2f}',
-            'Profit_Margin': f'£{self.get_profit_margin():.2f}'
+            'Revenue': f'€{self.revenue:.2f}',
+            'Profit': f'€{self.profit:.2f}',
+            'Profit_Margin': f'€{self.get_profit_margin():.2f}'
         }
 
 
@@ -302,12 +411,12 @@ class MarketModel:
         base_demand: Natural demand without any competitive effects
 
         α (alpha): Advertising effectiveness coefficient
-            - How many additional units sold per £1 spent on advertising
-            - Example: α = 0.01 means £100 advertising → +1 unit demand
+            - How many additional units sold per €1 spent on advertising
+            - Example: α = 0.01 means €100 advertising → +1 unit demand
 
         β (beta): Price sensitivity coefficient
             - How demand shifts based on price differences with competitors
-            - Example: β = 5.0 means if competitor charges £1 more → +5 units demand
+            - Example: β = 5.0 means if competitor charges €1 more → +5 units demand
 
         γ (gamma): Social influence coefficient (for Task IV - network effects)
             - How social network influence affects demand
@@ -327,7 +436,8 @@ class MarketModel:
         gamma (float): Social influence coefficient
     """
 
-    def __init__(self, sellers_dict, alpha=0.01, beta=5.0, gamma=0.0):
+
+    def __init__(self, sellers_dict, alpha=0.01, beta=5.0, gamma=0.0,total_market_size=0):
         """
         Initialize the market model.
 
@@ -341,15 +451,16 @@ class MarketModel:
         self.alpha = alpha
         self.beta = beta
         self.gamma = gamma
+        self.total_market_size = total_market_size
 
         print(f"\n{'='*80}")
         print("MARKET MODEL INITIALIZED")
         print(f"{'='*80}")
         print(f"Number of sellers: {len(self.sellers)}")
         print(f"Alpha (advertising effectiveness): {self.alpha}")
-        print(f"  → Each £1 advertising increases demand by {self.alpha} units")
+        print(f"  → Each €1 advertising increases demand by {self.alpha} units")
         print(f"Beta (price sensitivity): {self.beta}")
-        print(f"  → Each £1 price advantage vs competitor increases demand by {self.beta} units")
+        print(f"  → Each €1 price advantage vs competitor increases demand by {self.beta} units")
         print(f"Gamma (social influence): {self.gamma}")
         print(f"  → Currently {self.gamma} (no social network effects)")
         print(f"{'='*80}\n")
@@ -412,7 +523,7 @@ class MarketModel:
             influence_score_i (float): Social influence score (default 0)
 
         Returns:
-            float: Calculated profit (£)
+            float: Calculated profit (€)
         """
         # Step 1: Calculate demand
         demand = self.calculate_demand(seller_i, seller_j, influence_score_i)
@@ -500,9 +611,9 @@ class MarketModel:
         print(f"{'-'*100}")
 
         for seller in self.sellers.values():
-            print(f"{seller.name:<12} £{seller.price:>9.2f} £{seller.ad_budget:>11.2f} "
-                  f"{seller.demand:>10.2f} £{seller.revenue:>11.2f} "
-                  f"£{seller.profit:>11.2f} £{seller.get_profit_margin():>9.2f}")
+            print(f"{seller.name:<12} €{seller.price:>9.2f} €{seller.ad_budget:>11.2f} "
+                  f"{seller.demand:>10.2f} €{seller.revenue:>11.2f} "
+                  f"€{seller.profit:>11.2f} €{seller.get_profit_margin():>9.2f}")
 
         print(f"{'='*100}\n")
 
@@ -539,7 +650,7 @@ print("INITIALIZING SELLERS FROM SELLER_STATS")
 print("="*80)
 
 # Use seller_stats and estimated_cost from the previous analysis
-print(f"\nEstimated Production Cost: £{estimated_cost:.2f}")
+print(f"\nEstimated Production Cost: €{estimated_cost:.2f}")
 print(f"Number of Sellers: {len(seller_stats)}\n")
 
 # Create seller objects from seller_stats DataFrame
@@ -563,9 +674,9 @@ for idx, row in seller_stats.iterrows():
     sellers[seller_name] = seller
 
     print(f"Created {seller_name}:")
-    print(f"  Cost: £{estimated_cost:.2f}")
-    print(f"  Initial Price: £{row['Avg_Price']:.2f}")
-    print(f"  Initial Ad Budget: £{initial_ad_budget:.2f} (10% of revenue)")
+    print(f"  Cost: €{estimated_cost:.2f}")
+    print(f"  Initial Price: €{row['Avg_Price']:.2f}")
+    print(f"  Initial Ad Budget: €{initial_ad_budget:.2f} (10% of revenue)")
     print(f"  Base Demand: {row['Base_Demand']:.2f} units")
     print()
 
@@ -576,8 +687,8 @@ for idx, row in seller_stats.iterrows():
 # Create market with specified coefficients
 market = MarketModel(
     sellers_dict=sellers,
-    alpha=0.01,   # Each £1 advertising → +0.01 units demand
-    beta=5.0,     # Each £1 price advantage → +5 units demand
+    alpha=0.01,   # Each €1 advertising → +0.01 units demand
+    beta=5.0,     # Each €1 price advantage → +5 units demand
     gamma=0.0     # No social influence yet (Task IV)
 )
 
@@ -603,13 +714,13 @@ if len(sellers) == 2:
 
     print(f"\n{seller_a.name}:")
     print(f"  Demand: {seller_a.demand:.2f} units")
-    print(f"  Revenue: £{seller_a.revenue:.2f}")
-    print(f"  Profit: £{profit_a:.2f}")
+    print(f"  Revenue: €{seller_a.revenue:.2f}")
+    print(f"  Profit: €{profit_a:.2f}")
 
     print(f"\n{seller_b.name}:")
     print(f"  Demand: {seller_b.demand:.2f} units")
-    print(f"  Revenue: £{seller_b.revenue:.2f}")
-    print(f"  Profit: £{profit_b:.2f}")
+    print(f"  Revenue: €{seller_b.revenue:.2f}")
+    print(f"  Profit: €{profit_b:.2f}")
 
 elif len(sellers) == 3:
     # Triopoly scenario
@@ -622,8 +733,8 @@ elif len(sellers) == 3:
         seller = sellers[seller_name]
         print(f"\n{seller_name}:")
         print(f"  Demand: {seller.demand:.2f} units")
-        print(f"  Revenue: £{seller.revenue:.2f}")
-        print(f"  Profit: £{profit:.2f}")
+        print(f"  Revenue: €{seller.revenue:.2f}")
+        print(f"  Profit: €{profit:.2f}")
 
 # Print formatted market state
 market.print_market_state()
@@ -735,8 +846,8 @@ else:
     # Define ad budget range: from 0 to 2000 with 50 points
     ad_range = np.linspace(0, 2000, 50)
 
-    print(f"\nPrice range: £{price_min:.2f} to £{price_max:.2f} (50 points)")
-    print(f"Ad budget range: £0 to £2000 (50 points)")
+    print(f"\nPrice range: €{price_min:.2f} to €{price_max:.2f} (50 points)")
+    print(f"Ad budget range: €0 to €2000 (50 points)")
     print(f"Total combinations per seller: {len(price_range)} × {len(ad_range)} = {len(price_range) * len(ad_range)}")
 
     # Store current strategies
@@ -747,7 +858,7 @@ else:
 
     # Calculate profit landscape for Seller A (with Seller B fixed)
     print(f"\nCalculating profit landscape for {seller_a.name}...")
-    print(f"  (keeping {seller_b.name} fixed at price=£{current_price_b:.2f}, ad=£{current_ad_b:.2f})")
+    print(f"  (keeping {seller_b.name} fixed at price=€{current_price_b:.2f}, ad=€{current_ad_b:.2f})")
     profit_grid_A = calculate_profit_landscape(
         market, seller_a, seller_b,
         price_range, ad_range,
@@ -756,7 +867,7 @@ else:
 
     # Calculate profit landscape for Seller B (with Seller A fixed)
     print(f"\nCalculating profit landscape for {seller_b.name}...")
-    print(f"  (keeping {seller_a.name} fixed at price=£{current_price_a:.2f}, ad=£{current_ad_a:.2f})")
+    print(f"  (keeping {seller_a.name} fixed at price=€{current_price_a:.2f}, ad=€{current_ad_a:.2f})")
     profit_grid_B = calculate_profit_landscape(
         market, seller_b, seller_a,
         price_range, ad_range,
@@ -783,11 +894,11 @@ else:
                      extent=[price_range[0], price_range[-1], ad_range[0], ad_range[-1]],
                      cmap=cmap)
     cbar1 = plt.colorbar(im1, ax=ax1)
-    cbar1.set_label('Profit (£)', fontsize=12, fontweight='bold')
+    cbar1.set_label('Profit (€)', fontsize=12, fontweight='bold')
     ax1.plot(current_price_a, current_ad_a, 'wX', markersize=15,
              markeredgewidth=3, label='Current Strategy')
-    ax1.set_xlabel('Price (£)', fontsize=12, fontweight='bold')
-    ax1.set_ylabel('Advertising Budget (£)', fontsize=12, fontweight='bold')
+    ax1.set_xlabel('Price (€)', fontsize=12, fontweight='bold')
+    ax1.set_ylabel('Advertising Budget (€)', fontsize=12, fontweight='bold')
     ax1.set_title(f'{seller_a.name}: Profit Landscape ({seller_b.name} Fixed)',
                   fontsize=14, fontweight='bold')
     ax1.legend(loc='upper right', fontsize=10)
@@ -799,11 +910,11 @@ else:
                      extent=[price_range[0], price_range[-1], ad_range[0], ad_range[-1]],
                      cmap=cmap)
     cbar2 = plt.colorbar(im2, ax=ax2)
-    cbar2.set_label('Profit (£)', fontsize=12, fontweight='bold')
+    cbar2.set_label('Profit (€)', fontsize=12, fontweight='bold')
     ax2.plot(current_price_b, current_ad_b, 'wX', markersize=15,
              markeredgewidth=3, label='Current Strategy')
-    ax2.set_xlabel('Price (£)', fontsize=12, fontweight='bold')
-    ax2.set_ylabel('Advertising Budget (£)', fontsize=12, fontweight='bold')
+    ax2.set_xlabel('Price (€)', fontsize=12, fontweight='bold')
+    ax2.set_ylabel('Advertising Budget (€)', fontsize=12, fontweight='bold')
     ax2.set_title(f'{seller_b.name}: Profit Landscape ({seller_a.name} Fixed)',
                   fontsize=14, fontweight='bold')
     ax2.legend(loc='upper right', fontsize=10)
@@ -843,12 +954,12 @@ else:
     optimal_price_b = price_range[optimal_idx_b]
 
     ax3.axvline(optimal_price_a, color='blue', linestyle='--', linewidth=2, alpha=0.7,
-                label=f'{seller_a.name} Optimal: £{optimal_price_a:.2f}')
+                label=f'{seller_a.name} Optimal: €{optimal_price_a:.2f}')
     ax3.axvline(optimal_price_b, color='red', linestyle='--', linewidth=2, alpha=0.7,
-                label=f'{seller_b.name} Optimal: £{optimal_price_b:.2f}')
+                label=f'{seller_b.name} Optimal: €{optimal_price_b:.2f}')
 
-    ax3.set_xlabel('Price (£)', fontsize=12, fontweight='bold')
-    ax3.set_ylabel('Profit (£)', fontsize=12, fontweight='bold')
+    ax3.set_xlabel('Price (€)', fontsize=12, fontweight='bold')
+    ax3.set_ylabel('Profit (€)', fontsize=12, fontweight='bold')
     ax3.set_title('Profit vs Price (Ad Budget Fixed)', fontsize=14, fontweight='bold')
     ax3.legend(loc='best', fontsize=10)
     ax3.grid(True, alpha=0.3)
@@ -869,9 +980,9 @@ else:
     optimal_profit_a_full = profit_grid_A[optimal_ad_idx_a, optimal_price_idx_a]
 
     print(f"\n{seller_a.name}'s optimal strategy:")
-    print(f"  Price: £{optimal_price_a_full:.2f}")
-    print(f"  Ad Budget: £{optimal_ad_a_full:.2f}")
-    print(f"  Expected Profit: £{optimal_profit_a_full:.2f}")
+    print(f"  Price: €{optimal_price_a_full:.2f}")
+    print(f"  Ad Budget: €{optimal_ad_a_full:.2f}")
+    print(f"  Expected Profit: €{optimal_profit_a_full:.2f}")
 
     max_idx_b = np.unravel_index(np.argmax(profit_grid_B), profit_grid_B.shape)
     optimal_ad_idx_b, optimal_price_idx_b = max_idx_b
@@ -880,9 +991,9 @@ else:
     optimal_profit_b_full = profit_grid_B[optimal_ad_idx_b, optimal_price_idx_b]
 
     print(f"\n{seller_b.name}'s optimal strategy:")
-    print(f"  Price: £{optimal_price_b_full:.2f}")
-    print(f"  Ad Budget: £{optimal_ad_b_full:.2f}")
-    print(f"  Expected Profit: £{optimal_profit_b_full:.2f}")
+    print(f"  Price: €{optimal_price_b_full:.2f}")
+    print(f"  Ad Budget: €{optimal_ad_b_full:.2f}")
+    print(f"  Expected Profit: €{optimal_profit_b_full:.2f}")
 
     print("\n✓ Profit landscape analysis completed successfully!")
 
@@ -1037,7 +1148,7 @@ if len(sellers) >= 2:
                 label=f'α = {alpha_label}', color=colors[alpha_label], alpha=0.8)
 
     ax1.set_xlabel('Price Sensitivity (β)', fontsize=11, fontweight='bold')
-    ax1.set_ylabel('Profit (£)', fontsize=11, fontweight='bold')
+    ax1.set_ylabel('Profit (€)', fontsize=11, fontweight='bold')
     ax1.set_title(f'{seller_a.name}: Impact of Advertising Effectiveness (α)',
                   fontsize=12, fontweight='bold')
     ax1.set_xticks(x_positions + bar_width)
@@ -1064,7 +1175,7 @@ if len(sellers) >= 2:
                 label=f'α = {alpha_label}', color=colors[alpha_label], alpha=0.8)
 
     ax2.set_xlabel('Price Sensitivity (β)', fontsize=11, fontweight='bold')
-    ax2.set_ylabel('Profit (£)', fontsize=11, fontweight='bold')
+    ax2.set_ylabel('Profit (€)', fontsize=11, fontweight='bold')
     ax2.set_title(f'{seller_b.name}: Impact of Advertising Effectiveness (α)',
                   fontsize=12, fontweight='bold')
     ax2.set_xticks(x_positions + bar_width)
@@ -1091,7 +1202,7 @@ if len(sellers) >= 2:
                 label=f'β = {beta_label}', color=colors[beta_label], alpha=0.8)
 
     ax3.set_xlabel('Advertising Effectiveness (α)', fontsize=11, fontweight='bold')
-    ax3.set_ylabel('Profit (£)', fontsize=11, fontweight='bold')
+    ax3.set_ylabel('Profit (€)', fontsize=11, fontweight='bold')
     ax3.set_title(f'{seller_a.name}: Impact of Price Sensitivity (β)',
                   fontsize=12, fontweight='bold')
     ax3.set_xticks(x_positions + bar_width)
@@ -1118,7 +1229,7 @@ if len(sellers) >= 2:
                 label=f'β = {beta_label}', color=colors[beta_label], alpha=0.8)
 
     ax4.set_xlabel('Advertising Effectiveness (α)', fontsize=11, fontweight='bold')
-    ax4.set_ylabel('Profit (£)', fontsize=11, fontweight='bold')
+    ax4.set_ylabel('Profit (€)', fontsize=11, fontweight='bold')
     ax4.set_title(f'{seller_b.name}: Impact of Price Sensitivity (β)',
                   fontsize=12, fontweight='bold')
     ax4.set_xticks(x_positions + bar_width)
@@ -1164,14 +1275,14 @@ if len(sellers) >= 2:
         insights.append(
             f"• Advertising effectiveness (α) has GREATER impact than price sensitivity (β) "
             f"for both sellers\n"
-            f"  - {seller_a.name}: α impact = £{alpha_impact_A:.2f}, β impact = £{beta_impact_A:.2f}\n"
-            f"  - {seller_b.name}: α impact = £{alpha_impact_B:.2f}, β impact = £{beta_impact_B:.2f}"
+            f"  - {seller_a.name}: α impact = €{alpha_impact_A:.2f}, β impact = €{beta_impact_A:.2f}\n"
+            f"  - {seller_b.name}: α impact = €{alpha_impact_B:.2f}, β impact = €{beta_impact_B:.2f}"
         )
     else:
         insights.append(
             f"• Price sensitivity (β) has GREATER impact than advertising effectiveness (α)\n"
-            f"  - {seller_a.name}: β impact = £{beta_impact_A:.2f}, α impact = £{alpha_impact_A:.2f}\n"
-            f"  - {seller_b.name}: β impact = £{beta_impact_B:.2f}, α impact = £{alpha_impact_B:.2f}"
+            f"  - {seller_a.name}: β impact = €{beta_impact_A:.2f}, α impact = €{alpha_impact_A:.2f}\n"
+            f"  - {seller_b.name}: β impact = €{beta_impact_B:.2f}, α impact = €{alpha_impact_B:.2f}"
         )
 
     # Insight 2: Best/worst scenarios
@@ -1179,7 +1290,7 @@ if len(sellers) >= 2:
     worst_scenario_A = sensitivity_results.loc[sensitivity_results['seller_A_profit'].idxmin()]
 
     insights.append(
-        f"\n• {seller_a.name}'s profit ranges from £{worst_scenario_A['seller_A_profit']:.2f} to £{best_scenario_A['seller_A_profit']:.2f}\n"
+        f"\n• {seller_a.name}'s profit ranges from €{worst_scenario_A['seller_A_profit']:.2f} to €{best_scenario_A['seller_A_profit']:.2f}\n"
         f"  - Best: α = {best_scenario_A['alpha_label']}, β = {best_scenario_A['beta_label']}\n"
         f"  - Worst: α = {worst_scenario_A['alpha_label']}, β = {worst_scenario_A['beta_label']}"
     )
@@ -1188,7 +1299,7 @@ if len(sellers) >= 2:
     worst_scenario_B = sensitivity_results.loc[sensitivity_results['seller_B_profit'].idxmin()]
 
     insights.append(
-        f"\n• {seller_b.name}'s profit ranges from £{worst_scenario_B['seller_B_profit']:.2f} to £{best_scenario_B['seller_B_profit']:.2f}\n"
+        f"\n• {seller_b.name}'s profit ranges from €{worst_scenario_B['seller_B_profit']:.2f} to €{best_scenario_B['seller_B_profit']:.2f}\n"
         f"  - Best: α = {best_scenario_B['alpha_label']}, β = {best_scenario_B['beta_label']}\n"
         f"  - Worst: α = {worst_scenario_B['alpha_label']}, β = {worst_scenario_B['beta_label']}"
     )
@@ -1196,8 +1307,8 @@ if len(sellers) >= 2:
     # Insight 3: Baseline comparison
     insights.append(
         f"\n• At baseline (α=Medium, β=Medium):\n"
-        f"  - {seller_a.name} profit: £{baseline['seller_A_profit']:.2f}\n"
-        f"  - {seller_b.name} profit: £{baseline['seller_B_profit']:.2f}"
+        f"  - {seller_a.name} profit: €{baseline['seller_A_profit']:.2f}\n"
+        f"  - {seller_b.name} profit: €{baseline['seller_B_profit']:.2f}"
     )
 
     # Insight 4: Asymmetric effects
