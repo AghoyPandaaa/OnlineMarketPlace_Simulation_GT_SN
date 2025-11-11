@@ -323,12 +323,11 @@ def visualize_network_impact(results_no_network, results_with_network,
              family='monospace',
              bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.3))
 
-    plt.suptitle('IMPACT OF SOCIAL NETWORKS ON NASH EQUILIBRIUM',
-                 fontsize=16, fontweight='bold', y=0.98)
-
-    plt.subplots_adjust(top=0.92, hspace=0.35, wspace=0.3)
+    plt.suptitle('IMPACT OF SOCIAL NETWORKS ON NASH EQUILIBRIUM', fontsize=16)
+    plt.tight_layout()  # No rect, nothing else!
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
+
 
     print(f"\n✓ Network impact visualization saved: {save_path}")
 
