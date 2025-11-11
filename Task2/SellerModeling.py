@@ -634,3 +634,4 @@ print("Market Summary DataFrame:")
 print(market_summary_df.to_string(index=False))
 
 print("\n✓ Object-oriented seller and market models initialized successfully!")
+
